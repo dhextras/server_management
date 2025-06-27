@@ -96,32 +96,6 @@ server_managment/
 └── README.md
 ```
 
-## 🔧 **Configuration**
-
-### Central Server
-Runs on ports **8080** (TCP) and **8081** (HTTP). 
-Edit `config.json` to customize:
-```json
-{
-  "tcp_port": "8080",
-  "http_port": "8081", 
-  "stale_threshold_seconds": 5,
-  "dead_threshold_seconds": 10
-}
-```
-
-<!-- NOTE: THIS NEEED TO BE CHNAGED -->
-### Child Monitor
-First run creates interactive setup. Config saved to `monitor_config.json`:
-```json
-{
-  "server_name": "web-server-01",
-  "central_server_ip": "10.0.1.1",
-  "central_port": "8080",
-  "session_name": "main-session"
-}
-```
-
 ## 📊 **Server States**
 
 - **🟢 Active**: Receiving data (< 5 seconds old)
