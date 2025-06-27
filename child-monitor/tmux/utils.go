@@ -97,7 +97,7 @@ func GetPanes(sessionID, windowID string) ([]Pane, error) {
 
 func GetPaneContent(sessionID, windowID, paneID string) (string, error) {
 	target := fmt.Sprintf("%s:%s.%s", sessionID, windowID, paneID)
-	cmd := exec.Command("tmux", "capture-pane", "-et", target, "-p")
+	cmd := exec.Command("tmux", "capture-pane", "-eJt", target, "-p")
 	output, err := cmd.Output()
 	if err != nil {
 		return "", fmt.Errorf("failed to capture pane: %w", err)

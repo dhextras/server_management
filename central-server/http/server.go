@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
-	// "path/filepath"
 
 	"central-server/types"
 	"central-server/websocket"
@@ -37,9 +36,9 @@ func (s *HTTPServer) Start() error {
 
 	r.PathPrefix("/").Handler(http.FileServer(http.Dir("./web/")))
 
-	log.Printf("🌐 HTTP server listening on port %s", s.port)
-	log.Printf("📱 Frontend: http://localhost:%s", s.port)
-	log.Printf("🔗 WebSocket: ws://localhost:%s/ws", s.port)
+	log.Printf(" HTTP server listening on port %s", s.port)
+	log.Printf(" Frontend: http://localhost:%s", s.port)
+	log.Printf(" WebSocket: ws://localhost:%s/ws", s.port)
 
 	return http.ListenAndServe(":"+s.port, r)
 }
@@ -48,7 +47,7 @@ func (s *HTTPServer) handleGetServers(w http.ResponseWriter, r *http.Request) {
 	servers := s.serverManager.GetAllServers()
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	json.NewEncoder(w).Encode(map[string]any{
 		"servers": servers,
 		"count":   len(servers),
 	})
@@ -91,14 +90,8 @@ func (s *HTTPServer) handleHealth(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	json.NewEncoder(w).Encode(map[string]any{
 		"status": "healthy",
 		"stats":  stats,
 	})
-}
-
-func enableCORS(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Access-Control-Allow-Origin", "*")
-	w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
-	w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
 }

@@ -55,7 +55,7 @@ func getPanePreview(pane tmux.Pane) string {
 	}
 
 	var preview strings.Builder
-	preview.WriteString(fmt.Sprintf("🔲 Pane: %s\n", pane.ID))
+	preview.WriteString(fmt.Sprintf(" Pane: %s\n", pane.ID))
 	if pane.Active {
 		preview.WriteString("Status: Active\n\n")
 	} else {
@@ -125,7 +125,7 @@ func (m PanePickerModel) View() string {
 	header := lipgloss.NewStyle().
 		Bold(true).
 		Foreground(lipgloss.Color("#7D56F4")).
-		Render(fmt.Sprintf("🔲 Panes in '%s':", m.windowName)) + "\n\n"
+		Render(fmt.Sprintf(" Panes in '%s':", m.windowName)) + "\n\n"
 
 	leftPanel.WriteString(header)
 

@@ -14,19 +14,19 @@ import (
 const version = "v0.1.0"
 
 func main() {
-	log.Println("🔧 Starting Tmux Monitor Central Server")
+	log.Println(" Starting Tmux Monitor Central Server")
 
 	serverManager := types.NewServerManager()
 	dataStorage := storage.NewDataStorage()
 
 	serverManager.SetStorage(dataStorage)
 
-	log.Println("📂 Loading existing data from disk...")
+	log.Println(" Loading existing data from disk...")
 	if err := serverManager.LoadFromStorage(); err != nil {
-		log.Printf("⚠️  Failed to load existing data: %v", err)
+		log.Printf("  Failed to load existing data: %v", err)
 	} else {
 		servers := serverManager.GetAllServers()
-		log.Printf("📂 Loaded %d servers from persistent storage", len(servers))
+		log.Printf(" Loaded %d servers from persistent storage", len(servers))
 	}
 
 	hub := websocket.NewHub(serverManager)

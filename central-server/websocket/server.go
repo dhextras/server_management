@@ -58,7 +58,7 @@ func (h *Hub) Run() {
 			h.clients[client] = true
 			h.mutex.Unlock()
 
-			log.Printf("🌐 WebSocket client connected (total: %d)", len(h.clients))
+			log.Printf(" WebSocket client connected (total: %d)", len(h.clients))
 
 			servers := h.serverManager.GetAllServers()
 			update := ServerUpdate{Servers: servers}
@@ -81,7 +81,7 @@ func (h *Hub) Run() {
 			}
 			h.mutex.Unlock()
 
-			log.Printf("🌐 WebSocket client disconnected (total: %d)", len(h.clients))
+			log.Printf(" WebSocket client disconnected (total: %d)", len(h.clients))
 
 		case message := <-h.broadcast:
 			h.mutex.RLock()

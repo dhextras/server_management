@@ -53,7 +53,7 @@ func NewSessionPicker(sessions []tmux.Session) SessionPickerModel {
 	}
 
 	l := list.New(items, list.NewDefaultDelegate(), 80, 20)
-	l.Title = "🔧 Tmux Monitor - Select Session"
+	l.Title = " Tmux Monitor - Select Session"
 	l.SetShowStatusBar(false)
 	l.SetFilteringEnabled(false)
 	l.Styles.Title = titleStyle
@@ -93,7 +93,7 @@ func getSessionPreview(session tmux.Session) string {
 	}
 
 	var preview strings.Builder
-	preview.WriteString(fmt.Sprintf("📊 Session: %s (%s)\n", session.Name, session.ID))
+	preview.WriteString(fmt.Sprintf(" Session: %s (%s)\n", session.Name, session.ID))
 	preview.WriteString(fmt.Sprintf("Windows: %d\n\n", len(windows)))
 
 	for i, window := range windows {
@@ -171,7 +171,7 @@ func (m SessionPickerModel) View() string {
 	header := lipgloss.NewStyle().
 		Bold(true).
 		Foreground(lipgloss.Color("#7D56F4")).
-		Render("🔧 Tmux Monitor Setup") + "\n" +
+		Render(" Tmux Monitor Setup") + "\n" +
 		strings.Repeat("=", 21) + "\n\n"
 
 	listView := m.list.View()

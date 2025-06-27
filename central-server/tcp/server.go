@@ -31,7 +31,7 @@ func (s *TCPServer) Start() error {
 		return fmt.Errorf("failed to start TCP server: %w", err)
 	}
 
-	log.Printf("🔧 TCP server listening on port %s", s.port)
+	log.Printf(" TCP server listening on port %s", s.port)
 
 	for {
 		conn, err := listener.Accept()
@@ -48,7 +48,7 @@ func (s *TCPServer) handleConnection(conn net.Conn) {
 	defer conn.Close()
 
 	clientAddr := conn.RemoteAddr().String()
-	log.Printf("📱 New connection from %s", clientAddr)
+	log.Printf(" New connection from %s", clientAddr)
 
 	scanner := bufio.NewScanner(conn)
 
@@ -78,5 +78,5 @@ func (s *TCPServer) handleConnection(conn net.Conn) {
 		log.Printf("Connection error with %s: %v", clientAddr, err)
 	}
 
-	log.Printf("📱 Connection closed: %s", clientAddr)
+	log.Printf(" Connection closed: %s", clientAddr)
 }

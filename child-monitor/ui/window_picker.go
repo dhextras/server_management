@@ -67,7 +67,7 @@ func getWindowPreview(window tmux.Window) string {
 	}
 
 	var preview strings.Builder
-	preview.WriteString(fmt.Sprintf("🪟 Window: %s (%s)\n", window.Name, window.ID))
+	preview.WriteString(fmt.Sprintf(" Window: %s (%s)\n", window.Name, window.ID))
 	preview.WriteString(fmt.Sprintf("Panes: %d\n\n", len(panes)))
 
 	activePaneContent := ""
@@ -167,7 +167,7 @@ func (m WindowPickerModel) View() string {
 	header := lipgloss.NewStyle().
 		Bold(true).
 		Foreground(lipgloss.Color("#7D56F4")).
-		Render(fmt.Sprintf("🪟 Windows in '%s':", m.sessionName)) + "\n\n"
+		Render(fmt.Sprintf(" Windows in '%s':", m.sessionName)) + "\n\n"
 
 	leftPanel.WriteString(header)
 

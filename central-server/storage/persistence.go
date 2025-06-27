@@ -94,7 +94,7 @@ func (ds *DataStorage) LoadServerData(serverName string) (*types.ServerInfo, err
 
 	serverInfo.UpdateStateFromLastSeen()
 
-	log.Printf("📂 Loaded data for server: %s (last seen: %s)",
+	log.Printf(" Loaded data for server: %s (last seen: %s)",
 		serverName, storedData.LastSeen.Format("2006-01-02 15:04:05"))
 
 	return serverInfo, nil
@@ -119,7 +119,7 @@ func (ds *DataStorage) LoadAllServerData() (map[string]*types.ServerInfo, error)
 		serverName := strings.TrimSuffix(d.Name(), ".json")
 		serverInfo, err := ds.LoadServerData(serverName)
 		if err != nil {
-			log.Printf("⚠️  Failed to load data for server %s: %v", serverName, err)
+			log.Printf("  Failed to load data for server %s: %v", serverName, err)
 			return nil
 		}
 
@@ -134,7 +134,7 @@ func (ds *DataStorage) LoadAllServerData() (map[string]*types.ServerInfo, error)
 		return nil, fmt.Errorf("failed to walk data directory: %w", err)
 	}
 
-	log.Printf("📂 Loaded data for %d servers from disk", len(servers))
+	log.Printf(" Loaded data for %d servers from disk", len(servers))
 	return servers, nil
 }
 
@@ -145,7 +145,7 @@ func (ds *DataStorage) DeleteServerData(serverName string) error {
 		return fmt.Errorf("failed to delete server data file: %w", err)
 	}
 
-	log.Printf("🗑️  Deleted data for server: %s", serverName)
+	log.Printf("  Deleted data for server: %s", serverName)
 	return nil
 }
 

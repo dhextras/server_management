@@ -90,15 +90,15 @@ func (m SetupModel) View() string {
 
 	for i, question := range questions {
 		if i < m.step {
-			s.WriteString(fmt.Sprintf("✅ %s %s\n", question, m.inputs[i]))
+			s.WriteString(fmt.Sprintf(" %s %s\n", question, m.inputs[i]))
 		} else if i == m.step {
 			cursor := ""
 			if i == m.step {
 				cursor = "█"
 			}
-			s.WriteString(fmt.Sprintf("📝 %s %s%s\n", question, m.inputs[i], cursor))
+			s.WriteString(fmt.Sprintf(" %s %s%s\n", question, m.inputs[i], cursor))
 		} else {
-			s.WriteString(fmt.Sprintf("⏳ %s\n", question))
+			s.WriteString(fmt.Sprintf(" %s\n", question))
 		}
 	}
 
