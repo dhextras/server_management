@@ -136,10 +136,24 @@ jobs:
           ### Quick Download
 
           **Central Server:**
-          - Linux: `wget https://github.com/${{ github.repository }}/releases/download/${{ needs.check-version.outputs.version }}/central-server-linux-amd64`
+          - Linux:
+            ```bash
+               mkdir -p server_managment
+               cd server_managment
+               wget https://github.com/${{ github.repository }}/releases/download/${{ needs.check-version.outputs.version }}/central-server-linux-amd64
+               chmod +x central-server-linux-amd64
+               ./central-server-linux-amd64
+            ```
 
           **Child Monitor:**
-          - Linux: `wget https://github.com/${{ github.repository }}/releases/download/${{ needs.check-version.outputs.version }}/child-monitor-linux-amd64`
+          - Linux:
+            ```bash
+               mkdir -p server_managment
+               cd server_managment
+               wget https://github.com/${{ github.repository }}/releases/download/${{ needs.check-version.outputs.version }}/central-monitor-linux-amd64
+               chmod +x central-monitor-linux-amd64
+               ./central-monitor-linux-amd64
+            ```
 
           ### Installation
           ```bash

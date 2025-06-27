@@ -52,6 +52,29 @@ go build -o build/child-monitor
 **Just want the binaries?** 
 👉 **[Go to Releases Page](https://github.com/dhextras/server_managment/releases/latest)** 👈
 
+Download for your platform:
+- `central-server-linux-amd64`
+- `child-monitor-linux-amd64`
+
+
+**Central Server:**
+```bash
+mkdir -p server_managment
+cd server_managment
+wget https://github.com/dhextras/server_managment/releases/latest/download/central-server-linux-amd64
+chmod +x central-server-linux-amd64
+./central-server-linux-amd64
+```
+
+**Child Monitors:**
+```bash
+mkdir -p server_managment
+cd server_managment
+wget https://github.com/dhextras/server_managment/releases/latest/download/child-monitor-linux-amd64
+chmod +x child-monitor-linux-amd64
+./child-monitor-linux-amd64
+```
+
 ## 🎮 **Usage**
 
 **Access Dashboard:** `http://your-central-server:8081` || `https://yourcustomdomain.com` hosted with caddy
