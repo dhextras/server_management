@@ -13,8 +13,27 @@ window.App = () => {
 
   const [currentPage, setCurrentPage] = useState(0);
 
+  const getWebSocketUrl = () => {
+    const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+    const hostname = window.location.hostname;
+    const port = window.location.port;
+
+    if (hostname === "localhost" || hostname === "127.0.0.1") {
+      return `ws://localhost:8081/ws`;
+    }
+
+    if (port && port !== "80" && port !== "443") {
+      return `${protocol}//${hostname}:${port}/ws`;
+    } else {
+      return `${protocol}//${hostname}/ws`;
+    }
+  };
+
   useEffect(() => {
-    const websocket = new WebSocket("ws://localhost:8081/ws");
+    const wsUrl = getWebSocketUrl();
+    console.log("Connecting to WebSocket:", wsUrl);
+
+    const websocket = new WebSocket(wsUrl);
 
     websocket.onopen = () => setConnected(true);
     websocket.onmessage = (event) => {
