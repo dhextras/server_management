@@ -3,6 +3,7 @@ window.SearchBar = ({
   onSearchChange,
   onSearchSubmit,
   onSearchCancel,
+  onSearchHide,
   searchResults,
   totalServers,
 }) => {
@@ -17,7 +18,7 @@ window.SearchBar = ({
   const handleKeyDown = (e) => {
     if (e.key === "Enter") {
       e.preventDefault();
-      onSearchSubmit();
+      onSearchHide();
     } else if (e.key === "Escape") {
       e.preventDefault();
       onSearchCancel();
@@ -148,9 +149,9 @@ window.SearchBar = ({
               fontWeight: "500",
             }}
             onClick={onSearchCancel}
-            title="Clear search"
+            title="Close search"
           >
-            Clear
+            Close (Esc)
           </button>
         )}
 
@@ -165,10 +166,10 @@ window.SearchBar = ({
             cursor: "pointer",
             fontWeight: "500",
           }}
-          onClick={onSearchCancel}
-          title="Close search"
+          onClick={onSearchHide}
+          title="Hide search"
         >
-          Close
+          Hide (Enter)
         </button>
       </div>
     </div>

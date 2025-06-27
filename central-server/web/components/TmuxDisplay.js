@@ -94,7 +94,7 @@ window.TmuxDisplay = ({ tmuxPanes, sessionName }) => {
           color: "#fff",
           padding: "2px 6px",
           borderRadius: "3px",
-          fontSize: "0.7rem",
+          fontSize: "0.9rem",
           fontWeight: "bold",
           pointerEvents: "none",
         }}

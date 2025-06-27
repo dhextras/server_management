@@ -82,7 +82,7 @@ const AdaptiveStatusIndicators = ({ stats, cardWidth }) => {
           >
             {Math.round(stats.memory.percent)}%
           </span>
-          <span style={{ color: "#666", fontSize: "0.7rem" }}>
+          <span style={{ color: "#666", fontSize: "0.9rem" }}>
             ({formatBytes(stats.memory.used)})
           </span>
         </div>
@@ -146,7 +146,7 @@ const AdaptiveStatusIndicators = ({ stats, cardWidth }) => {
         style={{
           display: "flex",
           gap: "8px",
-          fontSize: "0.7rem",
+          fontSize: "0.9rem",
           color: "#888",
           alignItems: "center",
         }}

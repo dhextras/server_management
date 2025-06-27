@@ -28,7 +28,7 @@ const AdaptiveStatusIndicators = ({ stats, cardWidth }) => {
         style={{
           display: "flex",
           gap: "12px",
-          fontSize: "0.8rem",
+          fontSize: "1.2rem",
           color: "#ccc",
           alignItems: "center",
           flexWrap: "wrap",
@@ -44,7 +44,7 @@ const AdaptiveStatusIndicators = ({ stats, cardWidth }) => {
             }}
           />
           <span
-            style={{ color: "#fff", fontWeight: "500", fontSize: "0.75rem" }}
+            style={{ color: "#fff", fontWeight: "500", fontSize: "0.95rem" }}
           >
             CPU:
           </span>
@@ -52,7 +52,7 @@ const AdaptiveStatusIndicators = ({ stats, cardWidth }) => {
             style={{
               color: getStatusColor(stats.cpu_percent),
               fontWeight: "bold",
-              fontSize: "0.8rem",
+              fontSize: "1.2rem",
             }}
           >
             {Math.round(stats.cpu_percent)}%
@@ -69,7 +69,7 @@ const AdaptiveStatusIndicators = ({ stats, cardWidth }) => {
             }}
           />
           <span
-            style={{ color: "#fff", fontWeight: "500", fontSize: "0.75rem" }}
+            style={{ color: "#fff", fontWeight: "500", fontSize: "0.95rem" }}
           >
             MEM:
           </span>
@@ -77,12 +77,12 @@ const AdaptiveStatusIndicators = ({ stats, cardWidth }) => {
             style={{
               color: getStatusColor(stats.memory.percent, "inverse"),
               fontWeight: "bold",
-              fontSize: "0.8rem",
+              fontSize: "1.2rem",
             }}
           >
             {Math.round(stats.memory.percent)}%
           </span>
-          <span style={{ color: "#666", fontSize: "0.7rem" }}>
+          <span style={{ color: "#666", fontSize: "0.9rem" }}>
             ({formatBytes(stats.memory.used)})
           </span>
         </div>
@@ -97,7 +97,7 @@ const AdaptiveStatusIndicators = ({ stats, cardWidth }) => {
             }}
           />
           <span
-            style={{ color: "#fff", fontWeight: "500", fontSize: "0.75rem" }}
+            style={{ color: "#fff", fontWeight: "500", fontSize: "0.95rem" }}
           >
             DSK:
           </span>
@@ -105,7 +105,7 @@ const AdaptiveStatusIndicators = ({ stats, cardWidth }) => {
             style={{
               color: getStatusColor(stats.disk.percent, "inverse"),
               fontWeight: "bold",
-              fontSize: "0.8rem",
+              fontSize: "1.2rem",
             }}
           >
             {Math.round(stats.disk.percent)}%
@@ -146,7 +146,7 @@ const AdaptiveStatusIndicators = ({ stats, cardWidth }) => {
         style={{
           display: "flex",
           gap: "8px",
-          fontSize: "0.7rem",
+          fontSize: "0.9rem",
           color: "#888",
           alignItems: "center",
         }}

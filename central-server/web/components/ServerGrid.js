@@ -3,8 +3,9 @@ window.ServerGrid = ({
   selectedIndex,
   onServerSelect,
   onServerZoom,
+  currentPage,
+  onPageChange,
 }) => {
-  const [currentPage, setCurrentPage] = useState(0);
   const gridRef = useRef(null);
   const serverNames = Object.keys(servers);
 
@@ -81,7 +82,7 @@ window.ServerGrid = ({
     if (selectedIndex >= 0) {
       const targetPage = Math.floor(selectedIndex / serversPerPage);
       if (targetPage !== currentPage) {
-        setCurrentPage(targetPage);
+        onPageChange(targetPage);
       }
     }
   }, [selectedIndex, serversPerPage]);
@@ -249,7 +250,7 @@ background: rgba(125, 86, 244, 0.3);
               <button
                 key={i}
                 className={`page-number ${i === currentPage ? "active" : ""}`}
-                onClick={() => setCurrentPage(i)}
+                onClick={() => onPageChange(i)}
               >
                 {i + 1}
               </button>

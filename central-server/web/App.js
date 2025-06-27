@@ -8,6 +8,7 @@ window.App = () => {
   const [currentKeys, setCurrentKeys] = useState("");
 
   const [isSearching, setIsSearching] = useState(false);
+  const [isSearchHidden, setIsSearchHidden] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
 
   const [currentPage, setCurrentPage] = useState(0);
@@ -79,23 +80,48 @@ window.App = () => {
     : servers;
   const serverNames = Object.keys(filteredServers);
 
-  const getServersPerPage = () => {
-    if (typeof window === "undefined") return 6;
-    const width = window.innerWidth;
+  const getOptimalGridLayout = () => {
+    if (typeof window === "undefined") return { cols: 3, rows: 2 };
 
-    if (width >= 2400) return 9;
-    if (width >= 1600) return 6;
-    if (width >= 768) return 4;
-    return 2;
+    const width = window.innerWidth;
+    const height = window.innerHeight;
+
+    const availableWidth = width - 40; // 20px padding each side
+    const availableHeight = height - 200; // Headers, navigation, etc...
+
+    const minCardWidth = 320;
+    const minCardHeight = 280;
+
+    const maxCols = Math.floor(availableWidth / minCardWidth);
+    const maxRows = Math.floor(availableHeight / minCardHeight);
+
+    let cols, rows;
+
+    if (width >= 2000) {
+      cols = Math.min(4, maxCols);
+      rows = Math.min(3, maxRows);
+    } else if (width >= 1400) {
+      cols = Math.min(3, maxCols);
+      rows = Math.min(2, maxRows);
+    } else if (width >= 768) {
+      cols = Math.min(2, maxCols);
+      rows = Math.min(2, maxRows);
+    } else {
+      cols = 1;
+      rows = Math.min(3, maxRows);
+    }
+
+    return { cols: Math.max(1, cols), rows: Math.max(1, rows) };
   };
 
-  const serversPerPage = getServersPerPage();
+  const layout = getOptimalGridLayout();
+  const serversPerPage = layout.cols * layout.rows;
   const totalPages = Math.ceil(serverNames.length / serversPerPage);
 
   const handleKeyPress = useCallback(
     (event) => {
       if (
-        isSearching ||
+        (isSearching && !isSearchHidden) ||
         event.target.tagName === "INPUT" ||
         event.target.tagName === "TEXTAREA"
       ) {
@@ -120,6 +146,7 @@ window.App = () => {
         } else {
           if (pageNum < totalPages) {
             setCurrentPage(pageNum);
+            console.log(currentPage);
           }
         }
         return;
@@ -128,6 +155,7 @@ window.App = () => {
       if (key === "/") {
         event.preventDefault();
         setIsSearching(true);
+        setIsSearchHidden(false);
         return;
       }
 
@@ -182,7 +210,9 @@ window.App = () => {
         case "Enter":
         case "z":
           event.preventDefault();
-          if (serverNames[selectedServerIndex]) {
+          if (zoomedServer) {
+            setZoomedServer(null);
+          } else if (serverNames[selectedServerIndex]) {
             const actualServerName =
               Object.keys(servers).find(
                 (name) =>
@@ -226,12 +256,18 @@ window.App = () => {
 
   const handleSearchCancel = () => {
     setIsSearching(false);
+    setIsSearchHidden(false);
     setSearchQuery("");
     setSelectedServerIndex(0);
   };
 
+  const handleSearchHide = () => {
+    setIsSearchHidden(true);
+  };
+
   const openSearch = () => {
     setIsSearching(true);
+    setIsSearchHidden(false);
   };
 
   return (
@@ -259,10 +295,6 @@ window.App = () => {
             padding: "7px 12px",
             borderRadius: "6px",
             fontSize: "1rem",
-            background: connected
-              ? "rgba(4, 181, 117, 0.2)"
-              : "rgba(255, 107, 107, 0.2)",
-            border: `1px solid ${connected ? "#04B575" : "#ff6b6b"}`,
             color: connected ? "#04B575" : "#ff6b6b",
             fontWeight: "500",
           }}
@@ -354,10 +386,8 @@ window.App = () => {
               <window.ServerGrid
                 servers={filteredServers}
                 selectedIndex={selectedServerIndex}
-                mode="hybrid"
                 onServerSelect={setSelectedServerIndex}
                 onServerZoom={setZoomedServer}
-                searchQuery={searchQuery}
                 currentPage={currentPage}
                 onPageChange={setCurrentPage}
               />
@@ -365,12 +395,13 @@ window.App = () => {
           )}
         </div>
 
-        {isSearching && (
+        {isSearching && !isSearchHidden && (
           <window.SearchBar
             searchQuery={searchQuery}
             onSearchChange={handleSearchChange}
             onSearchSubmit={handleSearchSubmit}
             onSearchCancel={handleSearchCancel}
+            onSearchHide={handleSearchHide}
             searchResults={Object.keys(filteredServers).length}
             totalServers={Object.keys(servers).length}
           />
@@ -379,12 +410,13 @@ window.App = () => {
         <div
           style={{
             position: "fixed",
-            bottom: isSearching ? "80px" : "20px",
+            bottom: isSearching && !isSearchHidden ? "80px" : "20px",
             right: "20px",
             background: "rgba(0, 0, 0, 0.8)",
             padding: "8px 12px",
             borderRadius: "6px",
             fontSize: "0.75rem",
+            zIndex: 9999,
             color: "#666",
             pointerEvents: "none",
             transition: "all 0.2s",
@@ -397,10 +429,12 @@ window.App = () => {
           )}
           <div>
             {zoomedServer ? (
-              <>1-9: switch windows • Esc: close</>
+              <>1-9: switch windows • Esc/Enter/z: close</>
             ) : (
               <>
-                hjkl/arrows: navigate • Enter/z: zoom • /: search • 1-9: pages
+                {isSearching && !isSearchHidden
+                  ? "Esc: Close • Enter: Hide "
+                  : "hjkl/arrows: navigate • Enter/z: zoom • /: search • 1-9: pages"}
               </>
             )}
           </div>
