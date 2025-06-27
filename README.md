@@ -29,8 +29,8 @@ Monitor multiple servers with live tmux content, system stats, and vim-like keyb
 
 **Central Server:**
 ```bash
-git clone https://github.com/dhextras/server_managment.git
-cd server_managment/central-server
+git clone https://github.com/dhextras/server_management.git
+cd server_management/central-server
 go mod tidy
 mkdir -p build
 go build -o build/central-server
@@ -39,8 +39,8 @@ go build -o build/central-server
 
 **Child Monitors:**
 ```bash
-git clone https://github.com/dhextras/server_managment.git
-cd server_managment/child-monitor
+git clone https://github.com/dhextras/server_management.git
+cd server_management/child-monitor
 go mod tidy
 mkdir -p build
 go build -o build/child-monitor
@@ -50,7 +50,7 @@ go build -o build/child-monitor
 ### Option 2: Download Binaries
 
 **Just want the binaries?** 
-👉 **[Go to Releases Page](https://github.com/dhextras/server_managment/releases/latest)** 👈
+👉 **[Go to Releases Page](https://github.com/dhextras/server_management/releases/latest)** 👈
 
 ## 🎮 **Usage**
 
@@ -73,7 +73,7 @@ go build -o build/child-monitor
 ## 📁 **Project Structure**
 
 ```
-server_managment/
+server_management/
 ├── .github                  # CI/CD piplines
 ├── central-server/          # Central monitoring server
 │   ├── main.go
