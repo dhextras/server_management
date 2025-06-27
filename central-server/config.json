@@ -1,0 +1,9 @@
+{
+  "tcp_port": "8080",
+  "http_port": "8081",
+  "health_check_interval": 5,
+  "stale_threshold_seconds": 5,
+  "dead_threshold_seconds": 10,
+  "max_data_history": 10,
+  "expected_servers": ["test-1", "test-2", "test-3", "test-4"]
+}

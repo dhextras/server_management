@@ -1,0 +1,186 @@
+name: Build and Release
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+    inputs:
+      force_release:
+        description: 'Force create new release even if version unchanged'
+        required: false
+        default: 'false'
+        type: boolean
+
+jobs:
+  check-version:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.get-version.outputs.version }}
+      version-changed: ${{ steps.check-version.outputs.changed }}
+      should-release: ${{ steps.check-release.outputs.should-release }}
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Get current version
+      id: get-version
+      run: |
+        VERSION=$(grep -oP 'version.*=.*"\K[^"]+' central-server/main.go || echo "v0.1.0")
+        echo "version=$VERSION" >> $GITHUB_OUTPUT
+        echo "Current version: $VERSION"
+
+    - name: Check if version changed
+      id: check-version
+      run: |
+        CURRENT_VERSION="${{ steps.get-version.outputs.version }}"
+
+        LATEST_RELEASE=$(curl -s "https://api.github.com/repos/${{ github.repository }}/releases/latest" | jq -r '.tag_name // "v0.0.0"')
+
+        echo "Current: $CURRENT_VERSION"
+        echo "Latest release: $LATEST_RELEASE"
+
+        if [ "$CURRENT_VERSION" != "$LATEST_RELEASE" ]; then
+          echo "changed=true" >> $GITHUB_OUTPUT
+          echo "Version changed!"
+        else
+          echo "changed=false" >> $GITHUB_OUTPUT
+          echo "Version unchanged"
+        fi
+
+    - name: Determine if should release
+      id: check-release
+      run: |
+        VERSION_CHANGED="${{ steps.check-version.outputs.changed }}"
+        FORCE_RELEASE="${{ github.event.inputs.force_release }}"
+
+        if [ "$VERSION_CHANGED" = "true" ] || [ "$FORCE_RELEASE" = "true" ]; then
+          echo "should-release=true" >> $GITHUB_OUTPUT
+          echo "Will create release"
+        else
+          echo "should-release=false" >> $GITHUB_OUTPUT
+          echo "Will build but not release"
+        fi
+
+  build:
+    needs: check-version
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        os: [linux, windows]
+        arch: [amd64, arm64]
+        exclude:
+          - os: windows
+            arch: arm64
+
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Go
+      uses: actions/setup-go@v4
+      with:
+        go-version: '1.21'
+
+    - name: Build Central Server
+      run: |
+        cd central-server
+        EXT=""
+        if [ "${{ matrix.os }}" = "windows" ]; then
+          EXT=".exe"
+        fi
+        GOOS=${{ matrix.os }} GOARCH=${{ matrix.arch }} go build -ldflags="-s -w" -o central-server-${{ matrix.os }}-${{ matrix.arch }}$EXT
+
+        if [ "${{ matrix.os }}" = "windows" ]; then
+          zip central-server-${{ matrix.os }}-${{ matrix.arch }}.zip central-server-${{ matrix.os }}-${{ matrix.arch }}$EXT
+        else
+          tar -czf central-server-${{ matrix.os }}-${{ matrix.arch }}.tar.gz central-server-${{ matrix.os }}-${{ matrix.arch }}$EXT
+        fi
+
+    - name: Build Child Monitor
+      run: |
+        cd child-monitor
+        EXT=""
+        if [ "${{ matrix.os }}" = "windows" ]; then
+          EXT=".exe"
+        fi
+        GOOS=${{ matrix.os }} GOARCH=${{ matrix.arch }} go build -ldflags="-s -w" -o child-monitor-${{ matrix.os }}-${{ matrix.arch }}$EXT
+
+        if [ "${{ matrix.os }}" = "windows" ]; then
+          zip child-monitor-${{ matrix.os }}-${{ matrix.arch }}.zip child-monitor-${{ matrix.os }}-${{ matrix.arch }}$EXT
+        else
+          tar -czf child-monitor-${{ matrix.os }}-${{ matrix.arch }}.tar.gz child-monitor-${{ matrix.os }}-${{ matrix.arch }}$EXT
+        fi
+
+    - name: Upload Build Artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: binaries-${{ matrix.os }}-${{ matrix.arch }}
+        path: |
+          central-server/central-server-*
+          child-monitor/child-monitor-*
+
+  release:
+    needs: [check-version, build]
+    runs-on: ubuntu-latest
+    if: needs.check-version.outputs.should-release == 'true'
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Download all artifacts
+      uses: actions/download-artifact@v3
+      with:
+        path: ./artifacts
+
+    - name: Prepare release files
+      run: |
+        mkdir -p release-files
+
+        find ./artifacts -name "central-server-*" -exec cp {} release-files/ \;
+        find ./artifacts -name "child-monitor-*" -exec cp {} release-files/ \;
+
+        ls -la release-files/
+
+    - name: Create Release
+      uses: softprops/action-gh-release@v1
+      with:
+        tag_name: ${{ needs.check-version.outputs.version }}
+        name: Release ${{ needs.check-version.outputs.version }}
+        files: release-files/*
+        generate_release_notes: true
+        draft: false
+        prerelease: false
+        body: |
+          ## 🚀 Release ${{ needs.check-version.outputs.version }}
+
+          ### Quick Download
+
+          **Central Server:**
+          - Linux: `wget https://github.com/${{ github.repository }}/releases/download/${{ needs.check-version.outputs.version }}/central-server-linux-amd64`
+          - macOS: `wget https://github.com/${{ github.repository }}/releases/download/${{ needs.check-version.outputs.version }}/central-server-darwin-amd64`
+          - Windows: Download `central-server-windows-amd64.zip`
+
+          **Child Monitor:**
+          - Linux: `wget https://github.com/${{ github.repository }}/releases/download/${{ needs.check-version.outputs.version }}/child-monitor-linux-amd64`
+          - macOS: `wget https://github.com/${{ github.repository }}/releases/download/${{ needs.check-version.outputs.version }}/child-monitor-darwin-amd64`
+          - Windows: Download `child-monitor-windows-amd64.zip`
+
+          ### Installation
+          ```bash
+          chmod +x central-server-linux-amd64
+          ./central-server-linux-amd64
+          ```
+
+          Auto-generated release notes below:
+
+  build-only:
+    needs: [check-version, build]
+    runs-on: ubuntu-latest
+    if: needs.check-version.outputs.should-release == 'false'
+    steps:
+    - name: Build Complete
+      run: |
+        echo "✅ Build completed successfully!"
+        echo "📦 Binaries built but no release created (version unchanged)"
+        echo "🔄 To create release anyway, trigger workflow manually with 'force_release' checked"
