@@ -12,7 +12,7 @@ Monitor multiple servers with live tmux content, system stats, and vim-like keyb
 
 **Key Features:**
 - 🖥️ **Real-time tmux monitoring** - See live terminal content from remote servers
-- ⌨️ **Keyboard-driven interface** - Navigate with hjkl, search with `/`, zoom with `:zoom`
+- ⌨️ **Keyboard-driven interface** - Navigate with hjkl, search with `/`, zoom with `z`
 - 📊 **System monitoring** - CPU, memory, disk usage with red/green indicators
 - 🎮 **Dual modes** - Command mode (for vimmer's) and Normal mode (for fucking normies)
 - 📱 **Responsive design** - 6→4→2 server grid based on screen size
@@ -60,7 +60,6 @@ go build -o build/child-monitor
 - `j/k` - Navigate servers up/down
 - `h/l` - Navigate servers left/right
 - `/web` - Search for servers containing "web"
-- `:zoom api` - Zoom server containing "api"  
 - `Enter/z` - Zoom current selected server
 - `Esc` - Exit zoom/cancel
 
