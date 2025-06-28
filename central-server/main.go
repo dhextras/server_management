@@ -2,6 +2,8 @@ package main
 
 import (
 	"log"
+	bhttp "net/http"
+	_ "net/http/pprof"
 	"time"
 
 	"central-server/http"
@@ -15,6 +17,11 @@ const version = "v0.1.0"
 
 func main() {
 	log.Println(" Starting Tmux Monitor Central Server")
+
+	go func() {
+		log.Println(" Starting pprof server on :6060")
+		log.Println(bhttp.ListenAndServe("localhost:6060", nil))
+	}()
 
 	serverManager := types.NewServerManager()
 	dataStorage := storage.NewDataStorage()
