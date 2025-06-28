@@ -1,5 +1,6 @@
 window.TmuxDisplay = ({ dataHistory, sessionName }) => {
   const [selectedWindowIndex, setSelectedWindowIndex] = useState(0);
+  const [prevDataHistoryLength, setPrevDataHistoryLength] = useState(0);
   const paneRefs = useRef({});
 
   const processDataHistory = (dataHistory) => {
@@ -41,12 +42,18 @@ window.TmuxDisplay = ({ dataHistory, sessionName }) => {
   const tmuxPanes = processDataHistory(dataHistory);
 
   useEffect(() => {
-    Object.values(paneRefs.current).forEach((ref) => {
-      if (ref) {
-        ref.scrollTop = ref.scrollHeight;
-      }
-    });
-  }, [tmuxPanes, selectedWindowIndex]);
+    const currentDataHistoryLength = dataHistory ? dataHistory.length : 0;
+
+    if (currentDataHistoryLength > prevDataHistoryLength) {
+      Object.values(paneRefs.current).forEach((ref) => {
+        if (ref) {
+          ref.scrollTop = ref.scrollHeight;
+        }
+      });
+    }
+
+    setPrevDataHistoryLength(currentDataHistoryLength);
+  }, [dataHistory, prevDataHistoryLength]);
 
   if (!tmuxPanes || tmuxPanes.length === 0) {
     return (
