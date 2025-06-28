@@ -1,16 +1,17 @@
 package main
 
 import (
-	"log"
-	bhttp "net/http"
-	_ "net/http/pprof"
-	"time"
-
 	"central-server/http"
 	"central-server/storage"
 	"central-server/tcp"
 	"central-server/types"
 	"central-server/websocket"
+	"crypto/md5"
+	"fmt"
+	"log"
+	bhttp "net/http"
+	_ "net/http/pprof"
+	"time"
 )
 
 const version = "v0.1.0"
@@ -39,21 +40,56 @@ func main() {
 	hub := websocket.NewHub(serverManager)
 	go hub.Run()
 
-	broadcaster := make(chan types.ServerData, 100)
+	dataChanged := make(chan bool, 10)
 
+	broadcaster := make(chan types.ServerData, 100)
 	go func() {
 		for range broadcaster {
-			hub.BroadcastServerUpdate()
+			select {
+			case dataChanged <- true:
+			default:
+			}
 		}
 	}()
 
 	go func() {
-		ticker := time.NewTicker(5 * time.Second)
+		ticker := time.NewTicker(2 * time.Second) // Try 2 seconds
 		defer ticker.Stop()
 
-		for range ticker.C {
-			serverManager.UpdateServerStates()
-			hub.BroadcastServerUpdate()
+		var lastHash string
+		forceUpdate := false
+		lastForceUpdate := time.Now()
+
+		for {
+			select {
+			case <-dataChanged:
+				forceUpdate = true
+
+			case <-ticker.C:
+				serverManager.UpdateServerStates()
+				shouldBroadcast := false
+
+				servers := serverManager.GetAllServers()
+				currentHash := generateDataHash(servers)
+
+				if currentHash != lastHash {
+					shouldBroadcast = true
+					log.Printf(" Data changed, broadcasting (hash: %s)", currentHash[:8])
+				} else if time.Since(lastForceUpdate) > 10*time.Second {
+					shouldBroadcast = true
+					forceUpdate = true
+					log.Printf(" Force broadcast (10s interval)")
+				}
+
+				if shouldBroadcast {
+					hub.BroadcastServerUpdate()
+					lastHash = currentHash
+					if forceUpdate {
+						lastForceUpdate = time.Now()
+						forceUpdate = false
+					}
+				}
+			}
 		}
 	}()
 
@@ -68,4 +104,10 @@ func main() {
 	if err := httpServer.Start(); err != nil {
 		log.Fatalf("HTTP server failed: %v", err)
 	}
+}
+
+func generateDataHash(servers map[string]*types.ServerInfo) string {
+	data := fmt.Sprintf("%+v", servers)
+	hash := md5.Sum([]byte(data))
+	return fmt.Sprintf("%x", hash)
 }

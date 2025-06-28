@@ -124,39 +124,24 @@ func (h *Hub) BroadcastServerUpdate() {
 		return
 	}
 
-	h.cacheMutex.RLock()
-	if time.Since(h.cacheTime) < time.Second && h.cachedJSON != nil {
-		jsonData := make([]byte, len(h.cachedJSON))
-		copy(jsonData, h.cachedJSON)
-		h.cacheMutex.RUnlock()
-
-		select {
-		case h.broadcast <- jsonData:
-		default:
-		}
-		return
-	}
-	h.cacheMutex.RUnlock()
-
 	servers := h.serverManager.GetAllServers()
 	update := ServerUpdate{Servers: servers}
 	msg := Message{Type: "server_update", Payload: update}
 
 	var buf bytes.Buffer
 	encoder := json.NewEncoder(&buf)
-	if err := encoder.Encode(msg); err == nil {
-		jsonData := buf.Bytes()
+	if err := encoder.Encode(msg); err != nil {
+		log.Printf(" Failed to encode message: %v", err)
+		return
+	}
 
-		h.cacheMutex.Lock()
-		h.cachedJSON = make([]byte, len(jsonData))
-		copy(h.cachedJSON, jsonData)
-		h.cacheTime = time.Now()
-		h.cacheMutex.Unlock()
+	jsonData := buf.Bytes()
 
-		select {
-		case h.broadcast <- jsonData:
-		default:
-		}
+	select {
+	case h.broadcast <- jsonData:
+		log.Printf(" Broadcasted update to %d clients (%d bytes)", clientCount, len(jsonData))
+	default:
+		log.Printf(" Broadcast channel full, dropping message")
 	}
 }
 
