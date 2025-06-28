@@ -40,11 +40,29 @@ window.TmuxDisplay = ({ dataHistory, sessionName }) => {
   };
 
   const tmuxPanes = processDataHistory(dataHistory);
+  const [prevDataHistoryHash, setPrevDataHistoryHash] = useState("");
+
+  const hashDataHistory = (dataHistory) => {
+    if (!dataHistory || dataHistory.length === 0) return "";
+
+    const str = JSON.stringify(dataHistory);
+    let hash = 0;
+    for (let i = 0; i < str.length; i++) {
+      const char = str.charCodeAt(i);
+      hash = (hash << 5) - hash + char;
+      hash = hash & hash; // Convert to 32-bit integer
+    }
+    return hash.toString();
+  };
 
   useEffect(() => {
-    const currentDataHistoryLength = dataHistory ? dataHistory.length : 0;
+    const currentHash = hashDataHistory(dataHistory);
 
-    if (currentDataHistoryLength > prevDataHistoryLength) {
+    if (
+      currentHash &&
+      currentHash !== prevDataHistoryHash &&
+      prevDataHistoryHash !== ""
+    ) {
       Object.values(paneRefs.current).forEach((ref) => {
         if (ref) {
           ref.scrollTop = ref.scrollHeight;
@@ -52,8 +70,8 @@ window.TmuxDisplay = ({ dataHistory, sessionName }) => {
       });
     }
 
-    setPrevDataHistoryLength(currentDataHistoryLength);
-  }, [dataHistory, prevDataHistoryLength]);
+    setPrevDataHistoryHash(currentHash);
+  }, [dataHistory, prevDataHistoryHash]);
 
   if (!tmuxPanes || tmuxPanes.length === 0) {
     return (

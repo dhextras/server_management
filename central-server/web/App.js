@@ -12,8 +12,20 @@ window.App = () => {
   const [searchQuery, setSearchQuery] = useState("");
 
   const [currentPage, setCurrentPage] = useState(0);
-  const [deltaCount, setDeltaCount] = useState(0);
   const [lastFullSync, setLastFullSync] = useState(null);
+
+  const formatTimeSince = (date) => {
+    const now = new Date();
+    const diffMs = now - date;
+    const diffSecs = Math.floor(diffMs / 1000);
+    const diffMins = Math.floor(diffSecs / 60);
+    const diffHours = Math.floor(diffMins / 60);
+
+    if (diffSecs < 60) return `${diffSecs}s ago`;
+    if (diffMins < 60) return `${diffMins}m ago`;
+    if (diffHours < 24) return `${diffHours}h ago`;
+    return date.toLocaleTimeString();
+  };
 
   const getWebSocketUrl = () => {
     const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
@@ -44,7 +56,6 @@ window.App = () => {
       if (message.type === "full_sync") {
         setServers(message.payload.servers || {});
         setLastFullSync(new Date());
-        setDeltaCount(0);
         console.log(
           "Full sync received:",
           Object.keys(message.payload.servers || {}).length,
@@ -73,7 +84,6 @@ window.App = () => {
           return updated;
         });
 
-        setDeltaCount((prev) => prev + 1);
         console.log(
           "Delta update:",
           changed_servers ? Object.keys(changed_servers).length : 0,
@@ -360,9 +370,7 @@ window.App = () => {
           }}
         >
           {lastFullSync && (
-            <span>
-              Last sync: {deltaCount > 0 ? `${deltaCount} deltas ago` : "now"}
-            </span>
+            <span>Last sync: {formatTimeSince(lastFullSync)}</span>
           )}
           <span>{Object.keys(servers).length} servers</span>
         </div>
