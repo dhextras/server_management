@@ -218,6 +218,7 @@ window.App = () => {
         } else {
           if (pageNum < totalPages) {
             setCurrentPage(pageNum);
+            setSelectedServerIndex(pageNum * serversPerPage);
           }
         }
         return;

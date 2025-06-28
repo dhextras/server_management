@@ -250,7 +250,10 @@ background: rgba(125, 86, 244, 0.3);
               <button
                 key={i}
                 className={`page-number ${i === currentPage ? "active" : ""}`}
-                onClick={() => onPageChange(i)}
+                onClick={() => {
+                  onPageChange(i);
+                  onServerSelect(i * serversPerPage);
+                }}
               >
                 {i + 1}
               </button>
