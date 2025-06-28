@@ -361,9 +361,14 @@ window.ZoomModal = ({ server, onClose }) => {
             overflow: "hidden",
           }}
         >
-          <window.TmuxDisplay
-            tmuxPanes={latestData.tmux_panes || []}
-            sessionName={latestData.session_name}
+          <TmuxDisplay
+            dataHistory={server.data_history}
+            sessionName={
+              server.data_history.length > 0
+                ? server.data_history[server.data_history.length - 1]
+                    .session_name
+                : "session"
+            }
           />
         </div>
       </div>

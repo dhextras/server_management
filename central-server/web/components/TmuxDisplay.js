@@ -1,5 +1,52 @@
-window.TmuxDisplay = ({ tmuxPanes, sessionName }) => {
+window.TmuxDisplay = ({ dataHistory, sessionName }) => {
   const [selectedWindowIndex, setSelectedWindowIndex] = useState(0);
+  const paneRefs = useRef({});
+
+  const processDataHistory = (dataHistory) => {
+    if (!dataHistory || dataHistory.length === 0) return [];
+
+    const accumulatedPanes = {};
+
+    dataHistory.forEach((historyEntry) => {
+      const tmuxPanes = historyEntry.tmux_panes || [];
+
+      tmuxPanes.forEach((pane) => {
+        const paneKey = `${pane.window_id}-${pane.id}`;
+
+        if (!accumulatedPanes[paneKey]) {
+          accumulatedPanes[paneKey] = {
+            ...pane,
+            content: pane.content || "",
+            contentHistory: [pane.content || ""],
+          };
+        } else {
+          if (
+            pane.content &&
+            pane.content !==
+              accumulatedPanes[paneKey].contentHistory[
+                accumulatedPanes[paneKey].contentHistory.length - 1
+              ]
+          ) {
+            accumulatedPanes[paneKey].contentHistory.push(pane.content);
+            accumulatedPanes[paneKey].content =
+              accumulatedPanes[paneKey].contentHistory.join("\n");
+          }
+        }
+      });
+    });
+
+    return Object.values(accumulatedPanes);
+  };
+
+  const tmuxPanes = processDataHistory(dataHistory);
+
+  useEffect(() => {
+    Object.values(paneRefs.current).forEach((ref) => {
+      if (ref) {
+        ref.scrollTop = ref.scrollHeight;
+      }
+    });
+  }, [tmuxPanes, selectedWindowIndex]);
 
   if (!tmuxPanes || tmuxPanes.length === 0) {
     return (
@@ -53,56 +100,65 @@ window.TmuxDisplay = ({ tmuxPanes, sessionName }) => {
     setSelectedWindowIndex(index);
   };
 
-  const renderPane = (pane, _) => (
-    <div
-      key={pane.id}
-      style={{
-        flex: 1,
-        background: "#0a0a0a",
-        border: "1px solid #333",
-        borderRadius: "6px",
-        padding: "12px",
-        overflow: "hidden",
-        position: "relative",
-        fontSize: "0.85rem",
-        lineHeight: 1.4,
-        minHeight: "200px",
-        minWidth: "0",
-      }}
-    >
-      <div
-        style={{
-          height: "100%",
-          overflowY: "auto",
-          overflowX: "auto",
-          whiteSpace: "pre-wrap",
-          wordWrap: "break-word",
-          color: "#ddd",
-          scrollbarWidth: "thin",
-          scrollbarColor: "#555 #222",
-        }}
-      >
-        <AnsiText>{pane.content.replace(/\n+$/, "")}</AnsiText>
-      </div>
+  const renderPane = (pane, _) => {
+    const paneKey = `${pane.window_id}-${pane.id}`;
 
+    return (
       <div
+        key={pane.id}
         style={{
-          position: "absolute",
-          top: "6px",
-          right: "6px",
-          background: "rgba(125, 86, 244, 0.8)",
-          color: "#fff",
-          padding: "2px 6px",
-          borderRadius: "3px",
-          fontSize: "0.9rem",
-          fontWeight: "bold",
-          pointerEvents: "none",
+          flex: 1,
+          background: "#0a0a0a",
+          border: "1px solid #333",
+          borderRadius: "6px",
+          padding: "12px",
+          overflow: "hidden",
+          position: "relative",
+          fontSize: "0.85rem",
+          lineHeight: 1.4,
+          minHeight: "200px",
+          minWidth: "0",
         }}
       >
-        {pane.id}
+        <div
+          ref={(el) => {
+            if (el) {
+              paneRefs.current[paneKey] = el;
+            }
+          }}
+          style={{
+            height: "100%",
+            overflowY: "auto",
+            overflowX: "auto",
+            whiteSpace: "pre-wrap",
+            wordWrap: "break-word",
+            color: "#ddd",
+            scrollbarWidth: "thin",
+            scrollbarColor: "#555 #222",
+          }}
+        >
+          <AnsiText>{pane.content.replace(/\n+$/, "")}</AnsiText>
+        </div>
+
+        <div
+          style={{
+            position: "absolute",
+            top: "6px",
+            right: "6px",
+            background: "rgba(125, 86, 244, 0.8)",
+            color: "#fff",
+            padding: "2px 6px",
+            borderRadius: "3px",
+            fontSize: "0.9rem",
+            fontWeight: "bold",
+            pointerEvents: "none",
+          }}
+        >
+          {pane.id}
+        </div>
       </div>
-    </div>
-  );
+    );
+  };
 
   return (
     <div
@@ -139,6 +195,9 @@ window.TmuxDisplay = ({ tmuxPanes, sessionName }) => {
         >
           <span>📱</span>
           <span>{sessionName || "session"}</span>
+          <span style={{ color: "#666", fontSize: "0.8rem" }}>
+            ({dataHistory ? dataHistory.length : 0} history entries)
+          </span>
         </div>
 
         {windowIds.length > 1 && (
@@ -221,7 +280,8 @@ window.TmuxDisplay = ({ tmuxPanes, sessionName }) => {
         }}
       >
         Window {currentWindowId}: {currentWindowPanes.length} pane
-        {currentWindowPanes.length !== 1 ? "s" : ""}
+        {currentWindowPanes.length !== 1 ? "s" : ""} • Accumulated from{" "}
+        {dataHistory ? dataHistory.length : 0} history entries
       </div>
 
       <style>{`

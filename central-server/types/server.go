@@ -65,7 +65,8 @@ func (s *ServerInfo) AddData(data ServerData) {
 	s.LastSeen = time.Now()
 	s.DataHistory = append(s.DataHistory, data)
 
-	if len(s.DataHistory) > 10 {
+	// NOTE: Keep 50 page of history for each server
+	if len(s.DataHistory) > 50 {
 		s.DataHistory = s.DataHistory[1:]
 	}
 
