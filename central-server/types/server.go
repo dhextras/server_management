@@ -54,6 +54,7 @@ type ServerInfo struct {
 	Name        string       `json:"name"`
 	State       ServerState  `json:"state"`
 	LastSeen    time.Time    `json:"last_seen"`
+	IsOnline    bool         `json:"is_online"`
 	DataHistory []ServerData `json:"data_history"`
 	mutex       sync.RWMutex `json:"-"`
 }

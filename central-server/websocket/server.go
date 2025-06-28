@@ -1,10 +1,12 @@
 package websocket
 
 import (
+	"bytes"
 	"encoding/json"
 	"log"
 	"net/http"
 	"sync"
+	"time"
 
 	"central-server/types"
 	"github.com/gorilla/websocket"
@@ -23,6 +25,9 @@ type Hub struct {
 	unregister    chan *Client
 	serverManager *types.ServerManager
 	mutex         sync.RWMutex
+	cachedJSON    []byte
+	cacheTime     time.Time
+	cacheMutex    sync.RWMutex
 }
 
 type Client struct {
@@ -38,6 +43,18 @@ type Message struct {
 
 type ServerUpdate struct {
 	Servers map[string]*types.ServerInfo `json:"servers"`
+}
+
+type ServerSummary struct {
+	ServerID    string    `json:"server_id"`
+	LastSeen    time.Time `json:"last_seen"`
+	IsOnline    bool      `json:"is_online"`
+	PaneCount   int       `json:"pane_count"`
+	WindowCount int       `json:"window_count"`
+}
+
+type SummaryUpdate struct {
+	Servers []ServerSummary `json:"servers"`
 }
 
 func NewHub(serverManager *types.ServerManager) *Hub {
@@ -56,22 +73,11 @@ func (h *Hub) Run() {
 		case client := <-h.register:
 			h.mutex.Lock()
 			h.clients[client] = true
+			clientCount := len(h.clients)
 			h.mutex.Unlock()
+			log.Printf("WebSocket client connected (total: %d)", clientCount)
 
-			log.Printf(" WebSocket client connected (total: %d)", len(h.clients))
-
-			servers := h.serverManager.GetAllServers()
-			update := ServerUpdate{Servers: servers}
-			msg := Message{Type: "server_update", Payload: update}
-
-			if data, err := json.Marshal(msg); err == nil {
-				select {
-				case client.send <- data:
-				default:
-					close(client.send)
-					delete(h.clients, client)
-				}
-			}
+			h.sendInitialData()
 
 		case client := <-h.unregister:
 			h.mutex.Lock()
@@ -79,12 +85,18 @@ func (h *Hub) Run() {
 				delete(h.clients, client)
 				close(client.send)
 			}
+			clientCount := len(h.clients)
 			h.mutex.Unlock()
-
-			log.Printf(" WebSocket client disconnected (total: %d)", len(h.clients))
+			log.Printf("WebSocket client disconnected (total: %d)", clientCount)
 
 		case message := <-h.broadcast:
 			h.mutex.RLock()
+			clientCount := len(h.clients)
+			if clientCount == 0 {
+				h.mutex.RUnlock()
+				continue
+			}
+
 			for client := range h.clients {
 				select {
 				case client.send <- message:
@@ -94,21 +106,110 @@ func (h *Hub) Run() {
 				}
 			}
 			h.mutex.RUnlock()
+			log.Printf("Broadcast sent to %d clients (%d bytes)", clientCount, len(message))
 		}
 	}
 }
 
+func (h *Hub) sendInitialData() {
+	h.BroadcastSummaryUpdate()
+}
+
 func (h *Hub) BroadcastServerUpdate() {
+	h.mutex.RLock()
+	clientCount := len(h.clients)
+	h.mutex.RUnlock()
+
+	if clientCount == 0 {
+		return
+	}
+
+	h.cacheMutex.RLock()
+	if time.Since(h.cacheTime) < time.Second && h.cachedJSON != nil {
+		jsonData := make([]byte, len(h.cachedJSON))
+		copy(jsonData, h.cachedJSON)
+		h.cacheMutex.RUnlock()
+
+		select {
+		case h.broadcast <- jsonData:
+		default:
+		}
+		return
+	}
+	h.cacheMutex.RUnlock()
+
 	servers := h.serverManager.GetAllServers()
 	update := ServerUpdate{Servers: servers}
 	msg := Message{Type: "server_update", Payload: update}
 
-	if data, err := json.Marshal(msg); err == nil {
+	var buf bytes.Buffer
+	encoder := json.NewEncoder(&buf)
+	if err := encoder.Encode(msg); err == nil {
+		jsonData := buf.Bytes()
+
+		h.cacheMutex.Lock()
+		h.cachedJSON = make([]byte, len(jsonData))
+		copy(h.cachedJSON, jsonData)
+		h.cacheTime = time.Now()
+		h.cacheMutex.Unlock()
+
 		select {
-		case h.broadcast <- data:
+		case h.broadcast <- jsonData:
 		default:
 		}
 	}
+}
+
+func (h *Hub) BroadcastSummaryUpdate() {
+	h.mutex.RLock()
+	clientCount := len(h.clients)
+	h.mutex.RUnlock()
+
+	if clientCount == 0 {
+		return
+	}
+
+	servers := h.serverManager.GetAllServers()
+	summaries := make([]ServerSummary, 0, len(servers))
+
+	for serverID, server := range servers {
+		summary := ServerSummary{
+			ServerID: serverID,
+			LastSeen: server.LastSeen,
+			IsOnline: server.IsOnline,
+		}
+
+		if len(server.DataHistory) > 0 {
+			latest := server.DataHistory[len(server.DataHistory)-1]
+			summary.PaneCount = len(latest.TmuxPanes)
+
+			windows := make(map[string]bool)
+			for _, pane := range latest.TmuxPanes {
+				windows[pane.WindowID] = true
+			}
+			summary.WindowCount = len(windows)
+		}
+
+		summaries = append(summaries, summary)
+	}
+
+	update := SummaryUpdate{Servers: summaries}
+	msg := Message{Type: "server_summary", Payload: update}
+
+	var buf bytes.Buffer
+	encoder := json.NewEncoder(&buf)
+	if err := encoder.Encode(msg); err == nil {
+		select {
+		case h.broadcast <- buf.Bytes():
+		default:
+		}
+	}
+}
+
+func (h *Hub) GetClientCount() int {
+	h.mutex.RLock()
+	defer h.mutex.RUnlock()
+	return len(h.clients)
 }
 
 func (h *Hub) ServeWS(w http.ResponseWriter, r *http.Request) {
