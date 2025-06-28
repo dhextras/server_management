@@ -231,53 +231,75 @@ window.App = () => {
         return;
       }
 
-      if (key === ":") {
+      const handleServerNavigation = (direction) => {
         event.preventDefault();
-        return;
-      }
+        let newIndex = selectedServerIndex;
+
+        const layout = getOptimalGridLayout();
+        const serverPerPage = layout.rows * layout.cols;
+        const startIndex = currentPage * serverPerPage;
+        const localIndex = selectedServerIndex - startIndex;
+        const lastPage = Math.ceil(serverNames.length / serversPerPage) - 1;
+
+        // NOTE: This is gonna give you 0 based index for cols and rows
+        const currentRow = Math.floor(localIndex / layout.cols);
+        const lastPageRow = Math.floor(
+          (serverNames.length - lastPage * serverPerPage - 1) / layout.cols,
+        );
+
+        const currentCol = localIndex % layout.cols;
+        const lastPageCol =
+          (serverNames.length - lastPage * serverPerPage - 1) % layout.cols;
+
+        if (direction.toLowerCase() === "left") {
+          if (currentCol > 0) {
+            newIndex = Math.max(newIndex - 1, 0);
+          } else if (currentCol === 0 && currentPage !== 0) {
+            newIndex = newIndex - serverPerPage + layout.cols - 1;
+          }
+        } else if (direction.toLowerCase() === "down") {
+          if (currentRow !== lastPageRow || currentPage !== lastPage) {
+            newIndex = Math.min(newIndex + layout.cols, serverNames.length - 1);
+          }
+        } else if (direction.toLowerCase() === "up") {
+          if (currentRow !== 0 || currentPage !== 0) {
+            newIndex = newIndex - layout.cols;
+          }
+        } else if (direction.toLowerCase() === "right") {
+          if (currentCol < layout.cols - 1) {
+            newIndex = Math.min(newIndex + 1, serverNames.length - 1);
+          } else if (
+            currentCol === layout.cols - 1 &&
+            currentPage !== lastPage
+          ) {
+            const tempIndex = newIndex + serverPerPage - layout.cols + 1;
+            if (tempIndex > serverNames.length - 1) {
+              newIndex = tempIndex - (currentRow - lastPageRow) * layout.cols;
+            } else newIndex = tempIndex;
+          }
+        }
+
+        if (newIndex !== selectedServerIndex) {
+          setSelectedServerIndex(newIndex);
+        }
+      };
 
       switch (key) {
         case "j":
         case "ArrowDown":
-          event.preventDefault();
-          setSelectedServerIndex((prev) =>
-            Math.min(prev + 1, serverNames.length - 1),
-          );
+          handleServerNavigation("down");
           break;
         case "k":
         case "ArrowUp":
-          event.preventDefault();
-          setSelectedServerIndex((prev) => Math.max(prev - 1, 0));
+          handleServerNavigation("up");
           break;
         case "h":
         case "ArrowLeft":
-          event.preventDefault();
-          setSelectedServerIndex((prev) => {
-            const gridCols =
-              window.innerWidth >= 2400
-                ? 4
-                : window.innerWidth >= 1600
-                  ? 3
-                  : window.innerWidth >= 768
-                    ? 2
-                    : 1;
-            return Math.max(prev - gridCols, 0);
-          });
+          handleServerNavigation("left");
           break;
         case "l":
         case "ArrowRight":
-          event.preventDefault();
-          setSelectedServerIndex((prev) => {
-            const gridCols =
-              window.innerWidth >= 2400
-                ? 4
-                : window.innerWidth >= 1600
-                  ? 3
-                  : window.innerWidth >= 768
-                    ? 2
-                    : 1;
-            return Math.min(prev + gridCols, serverNames.length - 1);
-          });
+          handleServerNavigation("right");
           break;
         case "Enter":
         case "z":
@@ -426,7 +448,7 @@ window.App = () => {
           position: "relative",
         }}
       >
-        <div style={{ flex: 1, padding: "16px" }}>
+        <div style={{ flex: 1 }}>
           {Object.keys(servers).length === 0 ? (
             <div
               style={{

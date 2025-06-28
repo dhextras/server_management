@@ -93,6 +93,7 @@ window.ServerGrid = ({
         width: "100%",
         minHeight: "100vh",
         padding: "20px",
+        paddingTop: "5px",
         display: "flex",
         flexDirection: "column",
       }}
@@ -107,33 +108,6 @@ width: 100%;
 max-width: 100%;
 margin: 0 auto;
 flex: 1;
-}
-
-@media (max-width: 767px) {
-.server-grid-container {
-grid-template-columns: 1fr !important;
-grid-template-rows: repeat(auto, minmax(250px, auto)) !important;
-gap: 12px !important;
-}
-}
-
-@media (min-width: 768px) and (max-width: 1199px) {
-.server-grid-container {
-grid-template-columns: repeat(2, 1fr) !important;
-gap: 14px !important;
-}
-}
-
-@media (min-width: 1200px) and (max-width: 1599px) {
-.server-grid-container {
-grid-template-columns: repeat(3, 1fr) !important;
-}
-}
-
-@media (min-width: 2000px) {
-.server-grid-container {
-grid-template-columns: repeat(4, 1fr) !important;
-}
 }
 
 .pagination-button {
@@ -186,57 +160,14 @@ background: rgba(125, 86, 244, 0.3);
 }
 `}</style>
 
-      <div
-        ref={gridRef}
-        className="server-grid-container"
-        style={{
-          minHeight: `${layout.rows * 300}px`,
-        }}
-      >
-        {currentServers.map((serverName, localIndex) => (
-          <ServerCard
-            key={serverName}
-            server={servers[serverName]}
-            serverName={serverName}
-            isSelected={localIndex === getLocalSelectedIndex()}
-            onClick={() => handleCardClick(localIndex)}
-            onDoubleClick={() => handleCardDoubleClick(serverName)}
-          />
-        ))}
-      </div>
-
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "center",
-          alignItems: "center",
-          gap: "16px",
-          marginTop: "16px",
-          fontSize: "0.8rem",
-          color: "#666",
-        }}
-      >
-        <span>
-          Grid: {layout.cols}×{layout.rows} • Showing {currentServers.length} of{" "}
-          {serverNames.length} servers
-        </span>
-        {totalPages > 1 && (
-          <span>
-            • Page {currentPage + 1} of {totalPages}
-          </span>
-        )}
-      </div>
-
       {totalPages > 1 && (
         <div
           style={{
             display: "flex",
+            flexDirection: "column",
             justifyContent: "center",
             alignItems: "center",
             gap: "12px",
-            marginTop: "20px",
-            padding: "20px",
-            borderTop: "1px solid #333",
           }}
         >
           <div
@@ -259,8 +190,50 @@ background: rgba(125, 86, 244, 0.3);
               </button>
             ))}
           </div>
+
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "row",
+              justifyContent: "center",
+              alignItems: "center",
+              gap: "8px",
+              marginBottom: "16px",
+              fontSize: "0.8rem",
+              color: "#666",
+            }}
+          >
+            <span>
+              Grid: {layout.cols}×{layout.rows} • Showing{" "}
+              {currentServers.length} of {serverNames.length} servers{" "}
+              {totalPages > 1 && (
+                <>
+                  • Page {currentPage + 1} of {totalPages}
+                </>
+              )}
+            </span>
+          </div>
         </div>
       )}
+
+      <div
+        ref={gridRef}
+        className="server-grid-container"
+        style={{
+          minHeight: `${layout.rows * 300}px`,
+        }}
+      >
+        {currentServers.map((serverName, localIndex) => (
+          <ServerCard
+            key={serverName}
+            server={servers[serverName]}
+            serverName={serverName}
+            isSelected={localIndex === getLocalSelectedIndex()}
+            onClick={() => handleCardClick(localIndex)}
+            onDoubleClick={() => handleCardDoubleClick(serverName)}
+          />
+        ))}
+      </div>
     </div>
   );
 };
