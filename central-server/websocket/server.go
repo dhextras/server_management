@@ -2,7 +2,9 @@ package websocket
 
 import (
 	"bytes"
+	"crypto/md5"
 	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
 	"sync"
@@ -25,9 +27,9 @@ type Hub struct {
 	unregister    chan *Client
 	serverManager *types.ServerManager
 	mutex         sync.RWMutex
-	cachedJSON    []byte
-	cacheTime     time.Time
-	cacheMutex    sync.RWMutex
+	lastSentData  map[string]string
+	lastSentMutex sync.RWMutex
+	lastFullSync  time.Time
 }
 
 type Client struct {
@@ -42,19 +44,14 @@ type Message struct {
 }
 
 type ServerUpdate struct {
-	Servers map[string]*types.ServerInfo `json:"servers"`
+	Servers    map[string]*types.ServerInfo `json:"servers"`
+	IsFullSync bool                         `json:"is_full_sync"`
 }
 
-type ServerSummary struct {
-	ServerID    string    `json:"server_id"`
-	LastSeen    time.Time `json:"last_seen"`
-	IsOnline    bool      `json:"is_online"`
-	PaneCount   int       `json:"pane_count"`
-	WindowCount int       `json:"window_count"`
-}
-
-type SummaryUpdate struct {
-	Servers []ServerSummary `json:"servers"`
+type DeltaUpdate struct {
+	ChangedServers map[string]*types.ServerInfo `json:"changed_servers"`
+	RemovedServers []string                     `json:"removed_servers,omitempty"`
+	Timestamp      time.Time                    `json:"timestamp"`
 }
 
 func NewHub(serverManager *types.ServerManager) *Hub {
@@ -64,10 +61,14 @@ func NewHub(serverManager *types.ServerManager) *Hub {
 		register:      make(chan *Client),
 		unregister:    make(chan *Client),
 		serverManager: serverManager,
+		lastSentData:  make(map[string]string),
+		lastFullSync:  time.Now(),
 	}
 }
 
 func (h *Hub) Run() {
+	go h.startPeriodicUpdates()
+
 	for {
 		select {
 		case client := <-h.register:
@@ -77,7 +78,7 @@ func (h *Hub) Run() {
 			h.mutex.Unlock()
 			log.Printf("WebSocket client connected (total: %d)", clientCount)
 
-			h.sendInitialData()
+			h.sendFullSyncToClient(client)
 
 		case client := <-h.unregister:
 			h.mutex.Lock()
@@ -106,16 +107,36 @@ func (h *Hub) Run() {
 				}
 			}
 			h.mutex.RUnlock()
-			log.Printf("Broadcast sent to %d clients (%d bytes)", clientCount, len(message))
+			log.Printf("Broadcast sent to %d clients (%s bytes)", clientCount, formatBytes(len(message)))
 		}
 	}
 }
 
-func (h *Hub) sendInitialData() {
-	h.BroadcastSummaryUpdate()
+func (h *Hub) startPeriodicUpdates() {
+	deltaTicker := time.NewTicker(2 * time.Second)
+	fullSyncTicker := time.NewTicker(60 * time.Second)
+	defer deltaTicker.Stop()
+	defer fullSyncTicker.Stop()
+
+	for {
+		select {
+		case <-deltaTicker.C:
+			h.broadcastDeltaUpdate()
+		case <-fullSyncTicker.C:
+			h.broadcastFullSync()
+		}
+	}
 }
 
-func (h *Hub) BroadcastServerUpdate() {
+func (h *Hub) hashServerData(server *types.ServerInfo) string {
+	var buf bytes.Buffer
+	encoder := json.NewEncoder(&buf)
+	encoder.Encode(server)
+	hash := md5.Sum(buf.Bytes())
+	return fmt.Sprintf("%x", hash)
+}
+
+func (h *Hub) broadcastDeltaUpdate() {
 	h.mutex.RLock()
 	clientCount := len(h.clients)
 	h.mutex.RUnlock()
@@ -125,13 +146,46 @@ func (h *Hub) BroadcastServerUpdate() {
 	}
 
 	servers := h.serverManager.GetAllServers()
-	update := ServerUpdate{Servers: servers}
-	msg := Message{Type: "server_update", Payload: update}
+	changedServers := make(map[string]*types.ServerInfo)
+	var removedServers []string
+
+	h.lastSentMutex.Lock()
+	currentHashes := make(map[string]string)
+
+	for serverID, server := range servers {
+		currentHash := h.hashServerData(server)
+		currentHashes[serverID] = currentHash
+
+		if lastHash, exists := h.lastSentData[serverID]; !exists || lastHash != currentHash {
+			changedServers[serverID] = server
+		}
+	}
+
+	for serverID := range h.lastSentData {
+		if _, exists := servers[serverID]; !exists {
+			removedServers = append(removedServers, serverID)
+		}
+	}
+
+	h.lastSentData = currentHashes
+	h.lastSentMutex.Unlock()
+
+	if len(changedServers) == 0 && len(removedServers) == 0 {
+		return
+	}
+
+	deltaUpdate := DeltaUpdate{
+		ChangedServers: changedServers,
+		RemovedServers: removedServers,
+		Timestamp:      time.Now(),
+	}
+
+	msg := Message{Type: "delta_update", Payload: deltaUpdate}
 
 	var buf bytes.Buffer
 	encoder := json.NewEncoder(&buf)
 	if err := encoder.Encode(msg); err != nil {
-		log.Printf(" Failed to encode message: %v", err)
+		log.Printf("Failed to encode delta message: %v", err)
 		return
 	}
 
@@ -139,13 +193,14 @@ func (h *Hub) BroadcastServerUpdate() {
 
 	select {
 	case h.broadcast <- jsonData:
-		log.Printf(" Broadcasted update to %d clients (%d bytes)", clientCount, len(jsonData))
+		log.Printf("Delta update: %d changed, %d removed (%s bytes)",
+			len(changedServers), len(removedServers), formatBytes(len(jsonData)))
 	default:
-		log.Printf(" Broadcast channel full, dropping message")
+		log.Printf("Broadcast channel full, dropping delta message")
 	}
 }
 
-func (h *Hub) BroadcastSummaryUpdate() {
+func (h *Hub) broadcastFullSync() {
 	h.mutex.RLock()
 	clientCount := len(h.clients)
 	h.mutex.RUnlock()
@@ -155,39 +210,55 @@ func (h *Hub) BroadcastSummaryUpdate() {
 	}
 
 	servers := h.serverManager.GetAllServers()
-	summaries := make([]ServerSummary, 0, len(servers))
-
-	for serverID, server := range servers {
-		summary := ServerSummary{
-			ServerID: serverID,
-			LastSeen: server.LastSeen,
-			IsOnline: server.IsOnline,
-		}
-
-		if len(server.DataHistory) > 0 {
-			latest := server.DataHistory[len(server.DataHistory)-1]
-			summary.PaneCount = len(latest.TmuxPanes)
-
-			windows := make(map[string]bool)
-			for _, pane := range latest.TmuxPanes {
-				windows[pane.WindowID] = true
-			}
-			summary.WindowCount = len(windows)
-		}
-
-		summaries = append(summaries, summary)
+	update := ServerUpdate{
+		Servers:    servers,
+		IsFullSync: true,
 	}
-
-	update := SummaryUpdate{Servers: summaries}
-	msg := Message{Type: "server_summary", Payload: update}
+	msg := Message{Type: "full_sync", Payload: update}
 
 	var buf bytes.Buffer
 	encoder := json.NewEncoder(&buf)
-	if err := encoder.Encode(msg); err == nil {
-		select {
-		case h.broadcast <- buf.Bytes():
-		default:
-		}
+	if err := encoder.Encode(msg); err != nil {
+		log.Printf("Failed to encode full sync message: %v", err)
+		return
+	}
+
+	h.lastSentMutex.Lock()
+	for serverID, server := range servers {
+		h.lastSentData[serverID] = h.hashServerData(server)
+	}
+	h.lastFullSync = time.Now()
+	h.lastSentMutex.Unlock()
+
+	jsonData := buf.Bytes()
+	select {
+	case h.broadcast <- jsonData:
+		log.Printf("Full sync: %d servers (%s bytes)", len(servers), formatBytes(len(jsonData)))
+	default:
+		log.Printf("Broadcast channel full, dropping full sync message")
+	}
+}
+
+func (h *Hub) sendFullSyncToClient(client *Client) {
+	servers := h.serverManager.GetAllServers()
+	update := ServerUpdate{
+		Servers:    servers,
+		IsFullSync: true,
+	}
+	msg := Message{Type: "full_sync", Payload: update}
+
+	var buf bytes.Buffer
+	encoder := json.NewEncoder(&buf)
+	if err := encoder.Encode(msg); err != nil {
+		log.Printf("Failed to encode initial sync message: %v", err)
+		return
+	}
+
+	select {
+	case client.send <- buf.Bytes():
+		log.Printf("Sent initial sync to new client (%s bytes)", formatBytes(buf.Len()))
+	default:
+		log.Printf("Failed to send initial sync to new client")
 	}
 }
 
@@ -195,6 +266,24 @@ func (h *Hub) GetClientCount() int {
 	h.mutex.RLock()
 	defer h.mutex.RUnlock()
 	return len(h.clients)
+}
+
+func (h *Hub) GetStats() map[string]any {
+	h.mutex.RLock()
+	clientCount := len(h.clients)
+	h.mutex.RUnlock()
+
+	h.lastSentMutex.RLock()
+	trackedServers := len(h.lastSentData)
+	timeSinceFullSync := time.Since(h.lastFullSync)
+	h.lastSentMutex.RUnlock()
+
+	return map[string]any{
+		"connected_clients":       clientCount,
+		"tracked_servers":         trackedServers,
+		"time_since_full_sync":    timeSinceFullSync.String(),
+		"broadcast_channel_usage": fmt.Sprintf("%d/%d", len(h.broadcast), cap(h.broadcast)),
+	}
 }
 
 func (h *Hub) ServeWS(w http.ResponseWriter, r *http.Request) {
@@ -250,4 +339,15 @@ func (c *Client) writePump() {
 			}
 		}
 	}
+}
+
+func formatBytes(bytes int) string {
+	if bytes >= 1024*1024*1024 {
+		return fmt.Sprintf("%.2fGB", float64(bytes)/(1024*1024*1024))
+	} else if bytes >= 1024*1024 {
+		return fmt.Sprintf("%.2fMB", float64(bytes)/(1024*1024))
+	} else if bytes >= 1024 {
+		return fmt.Sprintf("%.2fKB", float64(bytes)/1024)
+	}
+	return fmt.Sprintf("%dB", bytes)
 }

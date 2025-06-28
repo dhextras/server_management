@@ -12,6 +12,8 @@ window.App = () => {
   const [searchQuery, setSearchQuery] = useState("");
 
   const [currentPage, setCurrentPage] = useState(0);
+  const [deltaCount, setDeltaCount] = useState(0);
+  const [lastFullSync, setLastFullSync] = useState(null);
 
   const getWebSocketUrl = () => {
     const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
@@ -38,7 +40,48 @@ window.App = () => {
     websocket.onopen = () => setConnected(true);
     websocket.onmessage = (event) => {
       const message = JSON.parse(event.data);
-      if (message.type === "server_update") {
+
+      if (message.type === "full_sync") {
+        setServers(message.payload.servers || {});
+        setLastFullSync(new Date());
+        setDeltaCount(0);
+        console.log(
+          "Full sync received:",
+          Object.keys(message.payload.servers || {}).length,
+          "servers",
+        );
+      } else if (message.type === "delta_update") {
+        const { changed_servers, removed_servers } = message.payload;
+
+        setServers((prev) => {
+          const updated = { ...prev };
+
+          if (changed_servers) {
+            Object.entries(changed_servers).forEach(
+              ([serverId, serverData]) => {
+                updated[serverId] = serverData;
+              },
+            );
+          }
+
+          if (removed_servers) {
+            removed_servers.forEach((serverId) => {
+              delete updated[serverId];
+            });
+          }
+
+          return updated;
+        });
+
+        setDeltaCount((prev) => prev + 1);
+        console.log(
+          "Delta update:",
+          changed_servers ? Object.keys(changed_servers).length : 0,
+          "changed,",
+          removed_servers ? removed_servers.length : 0,
+          "removed",
+        );
+      } else if (message.type === "server_update") {
         setServers(message.payload.servers || {});
       }
     };
@@ -165,7 +208,6 @@ window.App = () => {
         } else {
           if (pageNum < totalPages) {
             setCurrentPage(pageNum);
-            console.log(currentPage);
           }
         }
         return;
@@ -303,7 +345,7 @@ window.App = () => {
       <div
         style={{
           display: "flex",
-          justifyContent: "flex-end",
+          justifyContent: "space-between",
           alignItems: "center",
           padding: "12px 20px",
           gap: "12px",
@@ -311,42 +353,60 @@ window.App = () => {
       >
         <div
           style={{
-            padding: "7px 12px",
-            borderRadius: "6px",
-            fontSize: "1rem",
-            color: connected ? "#04B575" : "#ff6b6b",
-            fontWeight: "500",
+            fontSize: "0.8rem",
+            color: "#666",
+            display: "flex",
+            gap: "12px",
           }}
         >
-          {connected ? "🟢 Connected" : "🔴 Disconnected"}
+          {lastFullSync && (
+            <span>
+              Last sync: {deltaCount > 0 ? `${deltaCount} deltas ago` : "now"}
+            </span>
+          )}
+          <span>{Object.keys(servers).length} servers</span>
         </div>
 
-        <button
-          style={{
-            padding: "10px 12px",
-            border: "1px solid rgba(125, 86, 244, 0.4)",
-            background: isSearching
-              ? "rgba(125, 86, 244, 0.3)"
-              : "rgba(125, 86, 244, 0.1)",
-            color: "#7d56f4",
-            borderRadius: "6px",
-            cursor: "pointer",
-            fontSize: "1rem",
-            fontWeight: "500",
-            transition: "all 0.2s",
-          }}
-          onClick={openSearch}
-          onMouseEnter={(e) => {
-            e.target.style.background = "rgba(125, 86, 244, 0.4)";
-          }}
-          onMouseLeave={(e) => {
-            e.target.style.background = isSearching
-              ? "rgba(125, 86, 244, 0.3)"
-              : "rgba(125, 86, 244, 0.1)";
-          }}
-        >
-          🔍 Search (/)
-        </button>
+        <div style={{ display: "flex", gap: "12px", alignItems: "center" }}>
+          <div
+            style={{
+              padding: "7px 12px",
+              borderRadius: "6px",
+              fontSize: "1rem",
+              color: connected ? "#04B575" : "#ff6b6b",
+              fontWeight: "500",
+            }}
+          >
+            {connected ? "🟢 Connected" : "🔴 Disconnected"}
+          </div>
+
+          <button
+            style={{
+              padding: "10px 12px",
+              border: "1px solid rgba(125, 86, 244, 0.4)",
+              background: isSearching
+                ? "rgba(125, 86, 244, 0.3)"
+                : "rgba(125, 86, 244, 0.1)",
+              color: "#7d56f4",
+              borderRadius: "6px",
+              cursor: "pointer",
+              fontSize: "1rem",
+              fontWeight: "500",
+              transition: "all 0.2s",
+            }}
+            onClick={openSearch}
+            onMouseEnter={(e) => {
+              e.target.style.background = "rgba(125, 86, 244, 0.4)";
+            }}
+            onMouseLeave={(e) => {
+              e.target.style.background = isSearching
+                ? "rgba(125, 86, 244, 0.3)"
+                : "rgba(125, 86, 244, 0.1)";
+            }}
+          >
+            🔍 Search (/)
+          </button>
+        </div>
       </div>
 
       <div
