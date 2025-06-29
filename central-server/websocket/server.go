@@ -20,6 +20,24 @@ var upgrader = websocket.Upgrader{
 	},
 }
 
+var bufferPool = sync.Pool{
+	New: func() any {
+		return bytes.NewBuffer(make([]byte, 0, 1024))
+	},
+}
+
+func getBuffer() *bytes.Buffer {
+	return bufferPool.Get().(*bytes.Buffer)
+}
+
+func putBuffer(buf *bytes.Buffer) {
+	// Reset buffer and put back in pool if not too large
+	buf.Reset()
+	if buf.Cap() < 64*1024 { // Don't pool buffers larger than 64KB
+		bufferPool.Put(buf)
+	}
+}
+
 type Hub struct {
 	clients       map[*Client]bool
 	broadcast     chan []byte
@@ -46,6 +64,21 @@ type Message struct {
 type ServerUpdate struct {
 	Servers    map[string]*types.ServerInfo `json:"servers"`
 	IsFullSync bool                         `json:"is_full_sync"`
+}
+
+type SingleServerUpdate struct {
+	ServerID   string            `json:"server_id"`
+	ServerData *types.ServerInfo `json:"server_data"`
+	IsFullSync bool              `json:"is_full_sync"`
+}
+
+type FullSyncStart struct {
+	TotalServers int  `json:"total_servers"`
+	IsFullSync   bool `json:"is_full_sync"`
+}
+
+type FullSyncComplete struct {
+	IsFullSync bool `json:"is_full_sync"`
 }
 
 type DeltaUpdate struct {
@@ -107,14 +140,13 @@ func (h *Hub) Run() {
 				}
 			}
 			h.mutex.RUnlock()
-			log.Printf("Broadcast sent to %d clients (%s bytes)", clientCount, formatBytes(len(message)))
 		}
 	}
 }
 
 func (h *Hub) startPeriodicUpdates() {
 	deltaTicker := time.NewTicker(2 * time.Second)
-	fullSyncTicker := time.NewTicker(60 * time.Second)
+	fullSyncTicker := time.NewTicker(5 * time.Minute)
 	defer deltaTicker.Stop()
 	defer fullSyncTicker.Stop()
 
@@ -129,8 +161,10 @@ func (h *Hub) startPeriodicUpdates() {
 }
 
 func (h *Hub) hashServerData(server *types.ServerInfo) string {
-	var buf bytes.Buffer
-	encoder := json.NewEncoder(&buf)
+	buf := getBuffer()
+	defer putBuffer(buf)
+
+	encoder := json.NewEncoder(buf)
 	encoder.Encode(server)
 	hash := md5.Sum(buf.Bytes())
 	return fmt.Sprintf("%x", hash)
@@ -182,14 +216,17 @@ func (h *Hub) broadcastDeltaUpdate() {
 
 	msg := Message{Type: "delta_update", Payload: deltaUpdate}
 
-	var buf bytes.Buffer
-	encoder := json.NewEncoder(&buf)
+	buf := getBuffer()
+	defer putBuffer(buf)
+
+	encoder := json.NewEncoder(buf)
 	if err := encoder.Encode(msg); err != nil {
 		log.Printf("Failed to encode delta message: %v", err)
 		return
 	}
 
-	jsonData := buf.Bytes()
+	jsonData := make([]byte, buf.Len())
+	copy(jsonData, buf.Bytes())
 
 	select {
 	case h.broadcast <- jsonData:
@@ -210,55 +247,178 @@ func (h *Hub) broadcastFullSync() {
 	}
 
 	servers := h.serverManager.GetAllServers()
-	update := ServerUpdate{
-		Servers:    servers,
-		IsFullSync: true,
-	}
-	msg := Message{Type: "full_sync", Payload: update}
 
-	var buf bytes.Buffer
-	encoder := json.NewEncoder(&buf)
-	if err := encoder.Encode(msg); err != nil {
-		log.Printf("Failed to encode full sync message: %v", err)
+	startMsg := Message{
+		Type: "full_sync_start",
+		Payload: FullSyncStart{
+			TotalServers: len(servers),
+			IsFullSync:   true,
+		},
+	}
+
+	buf := getBuffer()
+	encoder := json.NewEncoder(buf)
+	if err := encoder.Encode(startMsg); err != nil {
+		putBuffer(buf)
+		log.Printf("Failed to encode full sync start message: %v", err)
+		return
+	}
+
+	startData := make([]byte, buf.Len())
+	copy(startData, buf.Bytes())
+	putBuffer(buf)
+
+	select {
+	case h.broadcast <- startData:
+	default:
+		log.Printf("Broadcast channel full, dropping full sync start message")
 		return
 	}
 
 	h.lastSentMutex.Lock()
 	for serverID, server := range servers {
 		h.lastSentData[serverID] = h.hashServerData(server)
+
+		serverMsg := Message{
+			Type: "server_update",
+			Payload: SingleServerUpdate{
+				ServerID:   serverID,
+				ServerData: server,
+				IsFullSync: true,
+			},
+		}
+
+		serverBuf := getBuffer()
+		serverEncoder := json.NewEncoder(serverBuf)
+		if err := serverEncoder.Encode(serverMsg); err != nil {
+			putBuffer(serverBuf)
+			log.Printf("Failed to encode server update message: %v", err)
+			continue
+		}
+
+		serverData := make([]byte, serverBuf.Len())
+		copy(serverData, serverBuf.Bytes())
+		putBuffer(serverBuf)
+
+		select {
+		case h.broadcast <- serverData:
+		default:
+			log.Printf("Broadcast channel full, dropping server update")
+		}
+
+		time.Sleep(100 * time.Millisecond) // NOTE: Remove this if the json data didn't get messed up due to memmory correption
 	}
 	h.lastFullSync = time.Now()
 	h.lastSentMutex.Unlock()
 
-	jsonData := buf.Bytes()
+	completeMsg := Message{
+		Type:    "full_sync_complete",
+		Payload: FullSyncComplete{IsFullSync: true},
+	}
+
+	completeBuf := getBuffer()
+	completeEncoder := json.NewEncoder(completeBuf)
+	if err := completeEncoder.Encode(completeMsg); err != nil {
+		putBuffer(completeBuf)
+		log.Printf("Failed to encode full sync complete message: %v", err)
+		return
+	}
+
+	completeData := make([]byte, completeBuf.Len())
+	copy(completeData, completeBuf.Bytes())
+	putBuffer(completeBuf)
+
 	select {
-	case h.broadcast <- jsonData:
-		log.Printf("Full sync: %d servers (%s bytes)", len(servers), formatBytes(len(jsonData)))
+	case h.broadcast <- completeData:
+		log.Printf("Full sync: %d servers sent individually", len(servers))
 	default:
-		log.Printf("Broadcast channel full, dropping full sync message")
+		log.Printf("Broadcast channel full, dropping full sync complete message")
 	}
 }
 
 func (h *Hub) sendFullSyncToClient(client *Client) {
 	servers := h.serverManager.GetAllServers()
-	update := ServerUpdate{
-		Servers:    servers,
-		IsFullSync: true,
-	}
-	msg := Message{Type: "full_sync", Payload: update}
 
-	var buf bytes.Buffer
-	encoder := json.NewEncoder(&buf)
-	if err := encoder.Encode(msg); err != nil {
-		log.Printf("Failed to encode initial sync message: %v", err)
+	startMsg := Message{
+		Type: "full_sync_start",
+		Payload: FullSyncStart{
+			TotalServers: len(servers),
+			IsFullSync:   true,
+		},
+	}
+
+	buf := getBuffer()
+	encoder := json.NewEncoder(buf)
+	if err := encoder.Encode(startMsg); err != nil {
+		putBuffer(buf)
+		log.Printf("Failed to encode initial sync start message: %v", err)
 		return
 	}
 
+	startData := make([]byte, buf.Len())
+	copy(startData, buf.Bytes())
+	putBuffer(buf)
+
 	select {
-	case client.send <- buf.Bytes():
-		log.Printf("Sent initial sync to new client (%s bytes)", formatBytes(buf.Len()))
+	case client.send <- startData:
 	default:
-		log.Printf("Failed to send initial sync to new client")
+		log.Printf("Failed to send initial sync start to new client")
+		return
+	}
+
+	for serverID, server := range servers {
+		serverMsg := Message{
+			Type: "server_update",
+			Payload: SingleServerUpdate{
+				ServerID:   serverID,
+				ServerData: server,
+				IsFullSync: true,
+			},
+		}
+
+		serverBuf := getBuffer()
+		serverEncoder := json.NewEncoder(serverBuf)
+		if err := serverEncoder.Encode(serverMsg); err != nil {
+			putBuffer(serverBuf)
+			log.Printf("Failed to encode initial server update message: %v", err)
+			continue
+		}
+
+		serverData := make([]byte, serverBuf.Len())
+		copy(serverData, serverBuf.Bytes())
+		putBuffer(serverBuf)
+
+		select {
+		case client.send <- serverData:
+		default:
+			log.Printf("Failed to send initial server update to new client")
+		}
+
+		time.Sleep(200 * time.Millisecond)
+	}
+
+	completeMsg := Message{
+		Type:    "full_sync_complete",
+		Payload: FullSyncComplete{IsFullSync: true},
+	}
+
+	completeBuf := getBuffer()
+	completeEncoder := json.NewEncoder(completeBuf)
+	if err := completeEncoder.Encode(completeMsg); err != nil {
+		putBuffer(completeBuf)
+		log.Printf("Failed to encode initial sync complete message: %v", err)
+		return
+	}
+
+	completeData := make([]byte, completeBuf.Len())
+	copy(completeData, completeBuf.Bytes())
+	putBuffer(completeBuf)
+
+	select {
+	case client.send <- completeData:
+		log.Printf("Sent initial sync to new client (%d servers)", len(servers))
+	default:
+		log.Printf("Failed to send initial sync complete to new client")
 	}
 }
 

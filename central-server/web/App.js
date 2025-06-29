@@ -13,10 +13,21 @@ window.App = () => {
 
   const [currentPage, setCurrentPage] = useState(0);
   const [lastFullSync, setLastFullSync] = useState(null);
+  const [currentTime, setCurrentTime] = useState(new Date());
+  const isFirstTimeRef = useRef(Object.keys(servers).length === 0);
+
+  const [syncState, setSyncState] = useState({
+    isRunning: false,
+    expectedCount: 0,
+    receivedCount: 0,
+    tempServers: {},
+    startTime: null,
+    hasError: false,
+    errorMessage: "",
+  });
 
   const formatTimeSince = (date) => {
-    const now = new Date();
-    const diffMs = now - date;
+    const diffMs = currentTime - date;
     const diffSecs = Math.floor(diffMs / 1000);
     const diffMins = Math.floor(diffSecs / 60);
     const diffHours = Math.floor(diffMins / 60);
@@ -44,23 +55,112 @@ window.App = () => {
   };
 
   useEffect(() => {
+    const interval = setInterval(
+      () => {
+        setCurrentTime(new Date());
+      },
+      Math.floor(Math.random() * 4001) + 3000,
+    );
+
+    return () => clearInterval(interval);
+  }, []);
+
+  useEffect(() => {
+    let syncTimeout;
+
+    const clearSyncTimeout = () => {
+      if (syncTimeout) {
+        clearTimeout(syncTimeout);
+        syncTimeout = null;
+      }
+    };
+
+    const handleSyncTimeout = () => {
+      setSyncState((prev) => ({
+        ...prev,
+        hasError: true,
+        errorMessage: `Sync timeout: received ${prev.receivedCount}/${prev.expectedCount} servers`,
+      }));
+    };
+
     const wsUrl = getWebSocketUrl();
     console.log("Connecting to WebSocket:", wsUrl);
 
     const websocket = new WebSocket(wsUrl);
 
     websocket.onopen = () => setConnected(true);
-    websocket.onmessage = (event) => {
-      const message = JSON.parse(event.data);
 
-      if (message.type === "full_sync") {
-        setServers(message.payload.servers || {});
-        setLastFullSync(new Date());
+    websocket.onmessage = (event) => {
+      let message;
+      try {
+        message = JSON.parse(event.data);
+      } catch (error) {
+        console.error("Failed to parse WebSocket message:", error);
+        console.error("Raw message:", event.data);
+        return;
+      }
+
+      if (message.type === "full_sync_start") {
+        clearSyncTimeout();
+        setSyncState({
+          isRunning: true,
+          expectedCount: message.payload.total_servers,
+          receivedCount: 0,
+          tempServers: {},
+          startTime: new Date(),
+          hasError: false,
+          errorMessage: "",
+        });
+
+        syncTimeout = setTimeout(handleSyncTimeout, 30000);
         console.log(
-          "Full sync received:",
-          Object.keys(message.payload.servers || {}).length,
-          "servers",
+          "Full sync started:",
+          message.payload.total_servers,
+          "servers expected",
         );
+      } else if (message.type === "server_update") {
+        const { server_id, server_data } = message.payload;
+        setSyncState((prev) => {
+          const newTempServers = {
+            ...prev.tempServers,
+            [server_id]: server_data,
+          };
+          const newReceivedCount = prev.receivedCount + 1;
+
+          if (isFirstTimeRef.current) {
+            setServers(newTempServers);
+          }
+          return {
+            ...prev,
+            tempServers: newTempServers,
+            receivedCount: newReceivedCount,
+          };
+        });
+      } else if (message.type === "full_sync_complete") {
+        isFirstTimeRef.current = false;
+        clearSyncTimeout();
+        setSyncState((prev) => {
+          if (prev.receivedCount === prev.expectedCount) {
+            setServers(prev.tempServers);
+            setLastFullSync(new Date());
+            console.log("Full sync completed successfully");
+            return {
+              isRunning: false,
+              expectedCount: 0,
+              receivedCount: 0,
+              tempServers: {},
+              startTime: null,
+              hasError: false,
+              errorMessage: "",
+            };
+          } else {
+            return {
+              ...prev,
+              hasError: true,
+              errorMessage: `Sync incomplete: received ${prev.receivedCount}/${prev.expectedCount} servers`,
+            };
+          }
+        });
       } else if (message.type === "delta_update") {
         const { changed_servers, removed_servers } = message.payload;
 
@@ -91,16 +191,28 @@ window.App = () => {
           removed_servers ? removed_servers.length : 0,
           "removed",
         );
-      } else if (message.type === "server_update") {
-        setServers(message.payload.servers || {});
       }
     };
+
     websocket.onclose = () => {
+      clearSyncTimeout();
       setConnected(false);
+      setSyncState({
+        isRunning: false,
+        expectedCount: 0,
+        receivedCount: 0,
+        tempServers: {},
+        startTime: null,
+        hasError: false,
+        errorMessage: "",
+      });
       setTimeout(() => window.location.reload(), 2000);
     };
 
-    return () => websocket.close();
+    return () => {
+      clearSyncTimeout();
+      websocket.close();
+    };
   }, []);
 
   const filterServers = (servers, query) => {
@@ -158,8 +270,8 @@ window.App = () => {
     const width = window.innerWidth;
     const height = window.innerHeight;
 
-    const availableWidth = width - 40; // 20px padding each side
-    const availableHeight = height - 200; // Headers, navigation, etc...
+    const availableWidth = width - 40;
+    const availableHeight = height - 200;
 
     const minCardWidth = 320;
     const minCardHeight = 280;
@@ -364,6 +476,25 @@ window.App = () => {
     setIsSearchHidden(false);
   };
 
+  const getSyncStatusText = () => {
+    if (syncState.isRunning) {
+      return `Syncing ${syncState.receivedCount}/${syncState.expectedCount} servers...`;
+    }
+    if (syncState.hasError) {
+      return `${syncState.errorMessage}`;
+    }
+    if (lastFullSync) {
+      return `Last sync: ${formatTimeSince(lastFullSync)}`;
+    }
+    return "No sync yet";
+  };
+
+  const getSyncStatusColor = () => {
+    if (syncState.isRunning) return "#7d56f4";
+    if (syncState.hasError) return "#ff6b6b";
+    return "#666";
+  };
+
   return (
     <div
       style={{
@@ -387,15 +518,15 @@ window.App = () => {
         <div
           style={{
             fontSize: "0.8rem",
-            color: "#666",
+            color: getSyncStatusColor(),
             display: "flex",
             gap: "12px",
           }}
         >
-          {lastFullSync && (
-            <span>Last sync: {formatTimeSince(lastFullSync)}</span>
-          )}
-          <span>{Object.keys(servers).length} servers</span>
+          <>
+            {true && <span>{getSyncStatusText()}</span>}
+            {lastFullSync && <span>{Object.keys(servers).length} servers</span>}
+          </>
         </div>
 
         <div style={{ display: "flex", gap: "12px", alignItems: "center" }}>
