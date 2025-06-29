@@ -13,7 +13,7 @@ import (
 	"time"
 )
 
-const version = "v0.1.0"
+const version = "v0.1.1"
 
 func main() {
 	log.Println("Starting Tmux Monitor Central Server", version)
