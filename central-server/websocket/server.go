@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"runtime"
 	"sync"
 	"time"
 
@@ -33,7 +34,7 @@ func getBuffer() *bytes.Buffer {
 func putBuffer(buf *bytes.Buffer) {
 	// Reset buffer and put back in pool if not too large
 	buf.Reset()
-	if buf.Cap() < 64*1024 { // Don't pool buffers larger than 64KB
+	if buf.Cap() < 16*1024*1024 { // Don't pool buffers larger than 16MB
 		bufferPool.Put(buf)
 	}
 }
@@ -232,6 +233,10 @@ func (h *Hub) broadcastDeltaUpdate() {
 	case h.broadcast <- jsonData:
 		log.Printf("Delta update: %d changed, %d removed (%s bytes)",
 			len(changedServers), len(removedServers), formatBytes(len(jsonData)))
+
+		if len(jsonData) > 1024*1024 { // If > 1MB
+			runtime.GC()
+		}
 	default:
 		log.Printf("Broadcast channel full, dropping delta message")
 	}
@@ -331,6 +336,8 @@ func (h *Hub) broadcastFullSync() {
 	select {
 	case h.broadcast <- completeData:
 		log.Printf("Full sync: %d servers sent individually", len(servers))
+		runtime.GC()
+
 	default:
 		log.Printf("Broadcast channel full, dropping full sync complete message")
 	}
@@ -456,7 +463,7 @@ func (h *Hub) ServeWS(w http.ResponseWriter, r *http.Request) {
 	client := &Client{
 		hub:  h,
 		conn: conn,
-		send: make(chan []byte, 256),
+		send: make(chan []byte, 16),
 	}
 
 	client.hub.register <- client
