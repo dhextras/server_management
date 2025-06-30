@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useRef, useCallback } from "react";
-import { ServerGrid } from "./components/ServerGrid";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { SearchBar } from "./components/SearchBar";
+import { ServerGrid } from "./components/ServerGrid";
 import { ZoomModal } from "./components/ZoomModal";
 
 const App = () => {

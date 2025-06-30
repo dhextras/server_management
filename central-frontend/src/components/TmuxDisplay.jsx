@@ -1,9 +1,11 @@
-import React, { useState, useRef, useEffect } from "react";
+import { useEffect, useRef, useState } from "react";
 import { AnsiText } from "./AnsiText";
 
 export const TmuxDisplay = ({ dataHistory, sessionName }) => {
-  const [selectedWindowIndex, setSelectedWindowIndex] = useState(0);
+  let currentWindowPanes = [];
+
   const paneRefs = useRef({});
+  const [selectedWindowIndex, setSelectedWindowIndex] = useState(0);
 
   const processDataHistory = (dataHistory) => {
     if (!dataHistory || dataHistory.length === 0) return [];
@@ -120,7 +122,7 @@ export const TmuxDisplay = ({ dataHistory, sessionName }) => {
 
   const windowIds = Object.keys(windowGroups);
   const currentWindowId = windowIds[selectedWindowIndex] || windowIds[0];
-  const currentWindowPanes = windowGroups[currentWindowId] || [];
+  currentWindowPanes = windowGroups[currentWindowId] || [];
 
   useEffect(() => {
     const handleWindowSwitch = (event) => {
@@ -150,12 +152,12 @@ export const TmuxDisplay = ({ dataHistory, sessionName }) => {
           background: "#0a0a0a",
           border: "1px solid #333",
           borderRadius: "6px",
-          padding: "12px",
+          padding: "8px",
           overflow: "hidden",
           position: "relative",
           fontSize: "0.85rem",
           lineHeight: 1.4,
-          minHeight: "200px",
+          minHeight: "0",
           minWidth: "0",
         }}
       >
@@ -183,7 +185,7 @@ export const TmuxDisplay = ({ dataHistory, sessionName }) => {
           style={{
             position: "absolute",
             top: "6px",
-            right: "6px",
+            left: "6px",
             background: "rgba(125, 86, 244, 0.8)",
             color: "#fff",
             padding: "2px 6px",
@@ -296,8 +298,8 @@ export const TmuxDisplay = ({ dataHistory, sessionName }) => {
           flexDirection: currentWindowPanes.length > 1 ? "row" : "column",
           gap: "8px",
           minHeight: 0,
-          overflowY: "auto",
-          overflowX: "auto",
+          overflowY: "hidden",
+          overflowX: "hidden",
           padding: "4px",
           scrollbarWidth: "thin",
           scrollbarColor: "#555 #222",

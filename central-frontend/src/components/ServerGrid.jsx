@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ServerCard } from "./ServerCard";
 
 export const ServerGrid = ({

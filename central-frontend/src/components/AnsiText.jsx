@@ -1,5 +1,3 @@
-import React from "react";
-
 export const AnsiText = ({ children }) => {
   if (!children || typeof children !== "string") {
     return <span>{children}</span>;
