@@ -3,20 +3,18 @@
 A real-time server monitoring system with tmux session viewing, keyboard navigation, and clean terminal-inspired interface.
 
 ![Dashboard Screenshot](screenshots/dashboard.png)
-![Command Mode](screenshots/command-mode.png)
 ![Zoom View](screenshots/zoom-view.png)
 
-## 🎯 **Overview**
+## **Overview**
 
 Monitor multiple servers with live tmux content, system stats, and vim-like keyboard navigation. Built for sysadmins who prefer terminal workflows.
 
 **Key Features:**
-- 🖥️ **Real-time tmux monitoring** - See live terminal content from remote servers
-- ⌨️ **Keyboard-driven interface** - Navigate with hjkl, search with `/`, zoom with `z`
-- 📊 **System monitoring** - CPU, memory, disk usage with red/green indicators
-- 🎮 **Dual modes** - Command mode (for vimmer's) and Normal mode (for fucking normies)
-- 📱 **Responsive design** - 6→4→2 server grid based on screen size
-- 💾 **Data persistence** - Survives server restarts with JSON storage
+- **Real-time tmux monitoring** - See live terminal content from remote servers
+- **Keyboard-driven interface** - Navigate with hjkl, search with `/`, zoom with `z`
+- **System monitoring** - CPU, memory, disk usage with red/green indicators
+- **Responsive design** - 6→4→2 server grid based on screen size
+- **Data persistence** - Survives server restarts with JSON storage
 
 ## 📋 **Requirements**
 
@@ -56,24 +54,25 @@ go build -o build/child-monitor
 
 **Access Dashboard:** `http://your-central-server:8081` || `https://yourcustomdomain.com` hosted with caddy
 
-### Command Mode
-- `j/k` - Navigate servers up/down
-- `h/l` - Navigate servers left/right
-- `/web` - Search for servers containing "web"
-- `Enter/z` - Zoom current selected server
-- `Esc` - Exit zoom/cancel
+### for Vimmer's
 
-### Normal Mode
-- Click to select servers
-- Double-click to zoom
-- Mouse-driven interaction
-- Toggle mode button in header
+- `j/k/arrows` - Navigate servers up/down | In zoomed mode change servers prev/next
+- `h/l/arrows` - Navigate servers left/right
+- `/web` - Search for servers containing "web"
+- `1-9` - Change pages | In zoomed mode switch windows
+- `Enter/z` - Zoom current selected server | Exit zoom
+- `Esc` - Exit zoom
+
+### For fucking normies
+
+- Just move your mouse and click LOL
 
 ## 📁 **Project Structure**
 
 ```
 server_management/
 ├── .github                  # CI/CD piplines
+├── central-frontend/        # Frontend ( React+Vite )
 ├── central-server/          # Central monitoring server
 │   ├── main.go
 │   ├── types/               # Data structures
@@ -81,8 +80,7 @@ server_management/
 │   ├── tcp/                 # TCP data receiver
 │   ├── websocket/           # WebSocket real-time updates
 │   ├── http/                # HTTP API
-│   ├── web/                 # Frontend React app
-│   └── data/                # JSON data files (auto-created)
+│   └── data/                # JSON data files (auto-generated)
 ├── child-monitor/           # Child data collector
 │   ├── main.go
 │   ├── config/              # Configuration management
@@ -91,7 +89,7 @@ server_management/
 │   ├── tmux/                # Tmux interface
 │   ├── ui/                  # Interactive terminal UI
 │   ├── collector/           # System stats
-│   └── logs/                # Daily log files (auto-created)
+│   └── logs/                # Daily log files (auto-generated)
 └── README.md
 ```
 
@@ -100,12 +98,3 @@ server_management/
 - **🟢 Active**: Receiving data (< 5 seconds old)
 - **🟡 Stale**: Data is 5-10 seconds old  
 - **🔴 Dead**: No data for 10+ seconds
-
-## 🔍 **API Endpoints**
-
-| Endpoint | Description |
-|----------|-------------|
-| `/api/health` | Server health statistics |
-| `/api/servers` | All connected servers |
-| `/api/servers/{name}` | Specific server data |
-| `/ws` | WebSocket real-time updates |
