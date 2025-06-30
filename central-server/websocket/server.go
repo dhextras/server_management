@@ -2,6 +2,7 @@ package websocket
 
 import (
 	"bytes"
+	"compress/gzip"
 	"crypto/md5"
 	"encoding/json"
 	"fmt"
@@ -27,6 +28,12 @@ var bufferPool = sync.Pool{
 	},
 }
 
+var compressedBufferPool = sync.Pool{
+	New: func() any {
+		return bytes.NewBuffer(make([]byte, 0, 1024))
+	},
+}
+
 func getBuffer() *bytes.Buffer {
 	return bufferPool.Get().(*bytes.Buffer)
 }
@@ -37,6 +44,37 @@ func putBuffer(buf *bytes.Buffer) {
 	if buf.Cap() < 16*1024*1024 { // Don't pool buffers larger than 16MB
 		bufferPool.Put(buf)
 	}
+}
+
+func getCompressedBuffer() *bytes.Buffer {
+	return compressedBufferPool.Get().(*bytes.Buffer)
+}
+
+func putCompressedBuffer(buf *bytes.Buffer) {
+	buf.Reset()
+	if buf.Cap() < 16*1024*1024 {
+		compressedBufferPool.Put(buf)
+	}
+}
+
+func compressMessage(data []byte) ([]byte, error) {
+	compressedBuf := getCompressedBuffer()
+	defer putCompressedBuffer(compressedBuf)
+
+	gzipWriter := gzip.NewWriter(compressedBuf)
+	_, err := gzipWriter.Write(data)
+	if err != nil {
+		return nil, err
+	}
+
+	err = gzipWriter.Close()
+	if err != nil {
+		return nil, err
+	}
+
+	result := make([]byte, compressedBuf.Len())
+	copy(result, compressedBuf.Bytes())
+	return result, nil
 }
 
 type Hub struct {
@@ -226,15 +264,18 @@ func (h *Hub) broadcastDeltaUpdate() {
 		return
 	}
 
-	jsonData := make([]byte, buf.Len())
-	copy(jsonData, buf.Bytes())
+	compressedData, err := compressMessage(buf.Bytes())
+	if err != nil {
+		log.Printf("Failed to compress delta message: %v", err)
+		return
+	}
 
 	select {
-	case h.broadcast <- jsonData:
-		log.Printf("Delta update: %d changed, %d removed (%s bytes)",
-			len(changedServers), len(removedServers), formatBytes(len(jsonData)))
+	case h.broadcast <- compressedData:
+		log.Printf("Delta update: %d changed, %d removed (%s --> %s)",
+			len(changedServers), len(removedServers), formatBytes(buf.Len()), formatBytes(len(compressedData)))
 
-		if len(jsonData) > 1024*1024 { // If > 1MB
+		if len(compressedData) > 1024*1024 {
 			runtime.GC()
 		}
 	default:
@@ -252,6 +293,7 @@ func (h *Hub) broadcastFullSync() {
 	}
 
 	servers := h.serverManager.GetAllServers()
+	var totalBytesSent int
 
 	startMsg := Message{
 		Type: "full_sync_start",
@@ -269,9 +311,13 @@ func (h *Hub) broadcastFullSync() {
 		return
 	}
 
-	startData := make([]byte, buf.Len())
-	copy(startData, buf.Bytes())
+	startData, err := compressMessage(buf.Bytes())
 	putBuffer(buf)
+	if err != nil {
+		log.Printf("Failed to compress full sync start message: %v", err)
+		return
+	}
+	totalBytesSent += len(startData)
 
 	select {
 	case h.broadcast <- startData:
@@ -301,9 +347,13 @@ func (h *Hub) broadcastFullSync() {
 			continue
 		}
 
-		serverData := make([]byte, serverBuf.Len())
-		copy(serverData, serverBuf.Bytes())
+		serverData, err := compressMessage(serverBuf.Bytes())
 		putBuffer(serverBuf)
+		if err != nil {
+			log.Printf("Failed to compress server update message: %v", err)
+			continue
+		}
+		totalBytesSent += len(serverData)
 
 		select {
 		case h.broadcast <- serverData:
@@ -311,7 +361,7 @@ func (h *Hub) broadcastFullSync() {
 			log.Printf("Broadcast channel full, dropping server update")
 		}
 
-		time.Sleep(100 * time.Millisecond) // NOTE: Remove this if the json data didn't get messed up due to memmory correption
+		time.Sleep(50 * time.Millisecond) // NOTE: Remove this if the json data didn't get messed up due to memmory correption
 	}
 	h.lastFullSync = time.Now()
 	h.lastSentMutex.Unlock()
@@ -329,13 +379,17 @@ func (h *Hub) broadcastFullSync() {
 		return
 	}
 
-	completeData := make([]byte, completeBuf.Len())
-	copy(completeData, completeBuf.Bytes())
+	completeData, err := compressMessage(completeBuf.Bytes())
 	putBuffer(completeBuf)
+	if err != nil {
+		log.Printf("Failed to compress full sync complete message: %v", err)
+		return
+	}
+	totalBytesSent += len(completeData)
 
 	select {
 	case h.broadcast <- completeData:
-		log.Printf("Full sync: %d servers sent individually", len(servers))
+		log.Printf("Full sync: %d servers sent individually (compressed total: %s)", len(servers), formatBytes(totalBytesSent))
 		runtime.GC()
 
 	default:
@@ -362,9 +416,12 @@ func (h *Hub) sendFullSyncToClient(client *Client) {
 		return
 	}
 
-	startData := make([]byte, buf.Len())
-	copy(startData, buf.Bytes())
+	startData, err := compressMessage(buf.Bytes())
 	putBuffer(buf)
+	if err != nil {
+		log.Printf("Failed to compress initial sync start message: %v", err)
+		return
+	}
 
 	select {
 	case client.send <- startData:
@@ -391,9 +448,12 @@ func (h *Hub) sendFullSyncToClient(client *Client) {
 			continue
 		}
 
-		serverData := make([]byte, serverBuf.Len())
-		copy(serverData, serverBuf.Bytes())
+		serverData, err := compressMessage(serverBuf.Bytes())
 		putBuffer(serverBuf)
+		if err != nil {
+			log.Printf("Failed to compress initial server update message: %v", err)
+			continue
+		}
 
 		select {
 		case client.send <- serverData:
@@ -417,9 +477,12 @@ func (h *Hub) sendFullSyncToClient(client *Client) {
 		return
 	}
 
-	completeData := make([]byte, completeBuf.Len())
-	copy(completeData, completeBuf.Bytes())
+	completeData, err := compressMessage(completeBuf.Bytes())
 	putBuffer(completeBuf)
+	if err != nil {
+		log.Printf("Failed to compress initial sync complete message: %v", err)
+		return
+	}
 
 	select {
 	case client.send <- completeData:
@@ -500,7 +563,7 @@ func (c *Client) writePump() {
 				return
 			}
 
-			if err := c.conn.WriteMessage(websocket.TextMessage, message); err != nil {
+			if err := c.conn.WriteMessage(websocket.BinaryMessage, message); err != nil {
 				log.Printf("WebSocket write error: %v", err)
 				return
 			}

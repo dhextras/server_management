@@ -26,6 +26,55 @@ window.App = () => {
     errorMessage: "",
   });
 
+  const decompressMessage = async (data) => {
+    if (typeof data === "string") {
+      return data;
+    }
+
+    if (data instanceof ArrayBuffer || data instanceof Uint8Array) {
+      const uint8Array =
+        data instanceof ArrayBuffer ? new Uint8Array(data) : data;
+
+      if (window.DecompressionStream) {
+        const stream = new DecompressionStream("gzip");
+        const writer = stream.writable.getWriter();
+        const reader = stream.readable.getReader();
+
+        writer.write(uint8Array);
+        writer.close();
+
+        const chunks = [];
+        let done = false;
+
+        while (!done) {
+          const { value, done: readerDone } = await reader.read();
+          done = readerDone;
+          if (value) chunks.push(value);
+        }
+
+        const decompressed = new Uint8Array(
+          chunks.reduce((acc, chunk) => acc + chunk.length, 0),
+        );
+        let offset = 0;
+        for (const chunk of chunks) {
+          decompressed.set(chunk, offset);
+          offset += chunk.length;
+        }
+
+        return new TextDecoder().decode(decompressed);
+      } else {
+        if (typeof pako !== "undefined") {
+          const decompressed = pako.ungzip(uint8Array, { to: "string" });
+          return decompressed;
+        } else {
+          throw new Error("No decompression method available");
+        }
+      }
+    }
+
+    return data;
+  };
+
   const formatTimeSince = (date) => {
     const diffMs = currentTime - date;
     const diffSecs = Math.floor(diffMs / 1000);
@@ -87,15 +136,20 @@ window.App = () => {
     console.log("Connecting to WebSocket:", wsUrl);
 
     const websocket = new WebSocket(wsUrl);
+    websocket.binaryType = "arraybuffer";
 
     websocket.onopen = () => setConnected(true);
 
-    websocket.onmessage = (event) => {
+    websocket.onmessage = async (event) => {
       let message;
       try {
-        message = JSON.parse(event.data);
+        const decompressedData = await decompressMessage(event.data);
+        message = JSON.parse(decompressedData);
       } catch (error) {
-        console.error("Failed to parse WebSocket message:", error);
+        console.error(
+          "Failed to decompress or parse WebSocket message:",
+          error,
+        );
         console.error("Raw message:", event.data);
         return;
       }
