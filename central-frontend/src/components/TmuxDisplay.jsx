@@ -3,6 +3,7 @@ import { AnsiText } from "./AnsiText";
 
 export const TmuxDisplay = ({ dataHistory, sessionName }) => {
   let currentWindowPanes = [];
+  console.log(dataHistory);
 
   const paneRefs = useRef({});
   const [selectedWindowIndex, setSelectedWindowIndex] = useState(0);

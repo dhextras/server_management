@@ -66,8 +66,8 @@ func (s *ServerInfo) AddData(data ServerData) {
 	s.LastSeen = time.Now()
 	s.DataHistory = append(s.DataHistory, data)
 
-	// NOTE: Keep 50 page of history for each server
-	if len(s.DataHistory) > 50 {
+	// NOTE: Keep 30 page of history for each server
+	if len(s.DataHistory) > 30 {
 		s.DataHistory = s.DataHistory[1:]
 	}
 
@@ -107,9 +107,9 @@ func (s *ServerInfo) UpdateStateFromLastSeen() {
 func (s *ServerInfo) updateState() {
 	timeSinceLastSeen := time.Since(s.LastSeen)
 
-	if timeSinceLastSeen > 10*time.Second {
+	if timeSinceLastSeen > 5*time.Minute {
 		s.State = StateDead
-	} else if timeSinceLastSeen > 5*time.Second {
+	} else if timeSinceLastSeen > 30*time.Second {
 		s.State = StateStale
 	} else {
 		s.State = StateActive

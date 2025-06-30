@@ -3,12 +3,166 @@ import { SearchBar } from "./components/SearchBar";
 import { ServerCard } from "./components/ServerCard";
 import { ServerGrid } from "./components/ServerGrid";
 
+const HelpPopup = ({ onClose }) => {
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === "Escape" || e.key === "?") {
+        e.preventDefault();
+        onClose();
+      }
+    };
+
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [onClose]);
+
+  return (
+    <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/95 p-4">
+      <div className="max-h-[90vh] w-full max-w-4xl overflow-y-auto rounded-lg border border-purple-500/30 bg-zinc-900 p-6">
+        <div className="mb-6 flex items-center justify-between">
+          <h2 className="text-2xl font-bold text-purple-400">
+            Keyboard Shortcuts & Search Help
+          </h2>
+          <button
+            onClick={onClose}
+            className="rounded border border-red-400/40 bg-red-500/20 px-3 py-1 text-red-400 hover:bg-red-500/30"
+          >
+            Close (Esc)
+          </button>
+        </div>
+
+        <div className="grid gap-6 md:grid-cols-2">
+          <div className="space-y-3">
+            <h3 className="text-lg font-semibold text-emerald-400">
+              Navigation
+            </h3>
+            <div className="space-y-2 text-sm">
+              <div>
+                <span className="text-purple-300">hjkl / Arrow Keys</span> -
+                Navigate servers
+              </div>
+              <div>
+                <span className="text-purple-300">Enter / z</span> - Zoom into
+                selected server (exit zoom as well)
+              </div>
+              <div>
+                <span className="text-purple-300">Esc</span> - Exit zoom mode
+              </div>
+              <div>
+                <span className="text-purple-300">1-9</span> - Switch pages (or
+                tmux windows when zoomed)
+              </div>
+              <div>
+                <span className="text-purple-300">?</span> - Show this help
+                (works everywhere)
+              </div>
+            </div>
+          </div>
+
+          <div className="space-y-3">
+            <h3 className="text-lg font-semibold text-emerald-400">Search</h3>
+            <div className="space-y-2 text-sm">
+              <div>
+                <span className="text-purple-300">/</span> - Open search
+              </div>
+              <div>
+                <span className="text-purple-300">Enter</span> - Hide search bar
+              </div>
+              <div>
+                <span className="text-purple-300">Esc</span> - Close search and
+                clear
+              </div>
+            </div>
+          </div>
+
+          <div className="space-y-3 md:col-span-2">
+            <h3 className="text-lg font-semibold text-emerald-400">
+              Advanced Search Modes
+            </h3>
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="space-y-2 text-sm">
+                <div className="space-y-1">
+                  <div>
+                    <span className="text-blue-400">n:</span>
+                    <span className="text-gray-300"> search_term</span> - Search
+                    server names only
+                  </div>
+                  <div className="ml-4 text-xs text-gray-500">
+                    Example: <span className="text-blue-300">n:web</span> finds
+                    servers with "web" in name
+                  </div>
+                </div>
+                <div className="space-y-1">
+                  <div>
+                    <span className="text-green-400">s:</span>
+                    <span className="text-gray-300"> search_term</span> - Search
+                    server status/state only
+                  </div>
+                  <div className="ml-4 text-xs text-gray-500">
+                    Example: <span className="text-green-300">s: active</span>{" "}
+                    finds servers with "active" status
+                  </div>
+                </div>
+              </div>
+              <div className="space-y-2 text-sm">
+                <div className="space-y-1">
+                  <div>
+                    <span className="text-yellow-400">c:</span>
+                    <span className="text-gray-300"> search_term</span> - Search
+                    content/tmux panes only
+                  </div>
+                  <div className="ml-4 text-xs text-gray-500">
+                    Example: <span className="text-yellow-300">c: error</span>{" "}
+                    finds servers with "error" in content
+                  </div>
+                </div>
+                <div className="space-y-1">
+                  <div>
+                    <span className="text-purple-400">h:</span>
+                    <span className="text-gray-300"> search_term</span> or{" "}
+                    <span className="text-gray-300">search_term</span> - Search
+                    everywhere
+                  </div>
+                  <div className="ml-4 text-xs text-gray-500">
+                    Example: <span className="text-purple-300">database</span>{" "}
+                    or <span className="text-purple-300">h: database</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="space-y-3 md:col-span-2">
+            <h3 className="text-lg font-semibold text-emerald-400">Tips</h3>
+            <div className="space-y-1 text-sm text-gray-300">
+              <div>• Search is case-insensitive</div>
+              <div>
+                • Use specific modes (n:, s:, c:) for faster, more targeted
+                searches
+              </div>
+              <div>
+                • Default search (no prefix) searches names, status, and content
+              </div>
+              <div>
+                • Press Enter in search to hide the search bar while keeping
+                results
+              </div>
+              <div>• Press Esc to completely exit search mode</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const App = () => {
   const [servers, setServers] = useState({});
   const [connected, setConnected] = useState(false);
   const [selectedServerIndex, setSelectedServerIndex] = useState(0);
   const [zoomedServer, setZoomedServer] = useState(null);
   const [currentKeys, setCurrentKeys] = useState("");
+  const [showHelp, setShowHelp] = useState(false);
 
   const [isSearching, setIsSearching] = useState(false);
   const [isSearchHidden, setIsSearchHidden] = useState(false);
@@ -28,6 +182,19 @@ const App = () => {
     hasError: false,
     errorMessage: "",
   });
+
+  const getSearchMode = (query) => {
+    const trimmed = query.toLowerCase().trim();
+    if (trimmed.startsWith("n:"))
+      return { mode: "name", query: trimmed.substring(2).trim() };
+    if (trimmed.startsWith("s:"))
+      return { mode: "status", query: trimmed.substring(2).trim() };
+    if (trimmed.startsWith("c:"))
+      return { mode: "content", query: trimmed.substring(2).trim() };
+    if (trimmed.startsWith("h:"))
+      return { mode: "all", query: trimmed.substring(2).trim() };
+    return { mode: "all", query: trimmed };
+  };
 
   const decompressMessage = async (data) => {
     if (typeof data === "string") {
@@ -275,41 +442,65 @@ const App = () => {
   const filterServers = (servers, query) => {
     if (!query.trim()) return servers;
 
-    const searchTerm = query.toLowerCase().trim();
+    const { mode, query: searchTerm } = getSearchMode(query);
+
+    if (!searchTerm) return servers;
+
     const filteredServers = {};
 
     Object.keys(servers).forEach((serverName) => {
       const server = servers[serverName];
 
-      if (serverName.toLowerCase().includes(searchTerm)) {
-        filteredServers[serverName] = server;
-        return;
-      }
+      switch (mode) {
+        case "name":
+          if (serverName.toLowerCase().includes(searchTerm)) {
+            filteredServers[serverName] = server;
+          }
+          break;
 
-      if (server.state?.toLowerCase().includes(searchTerm)) {
-        filteredServers[serverName] = server;
-        return;
-      }
+        case "status":
+          if (server.state?.toLowerCase().includes(searchTerm)) {
+            filteredServers[serverName] = server;
+          }
+          break;
 
-      if (server.data_history?.[0]?.tmux_panes) {
-        const content = server.data_history[0].tmux_panes
-          .map((pane) => pane.content || "")
-          .join(" ")
-          .toLowerCase();
+        case "content":
+          if (server.data_history?.[0]?.tmux_panes) {
+            const content = server.data_history[0].tmux_panes
+              .map((pane) => pane.content || "")
+              .join(" ")
+              .toLowerCase();
 
-        if (content.includes(searchTerm)) {
-          filteredServers[serverName] = server;
-          return;
-        }
-      }
+            if (content.includes(searchTerm)) {
+              filteredServers[serverName] = server;
+            }
+          }
+          break;
 
-      if (
-        server.data_history?.[0]?.session_name
-          ?.toLowerCase()
-          .includes(searchTerm)
-      ) {
-        filteredServers[serverName] = server;
-        return;
+        case "all":
+        default:
+          if (serverName.toLowerCase().includes(searchTerm)) {
+            filteredServers[serverName] = server;
+            return;
+          }
+
+          if (server.state?.toLowerCase().includes(searchTerm)) {
+            filteredServers[serverName] = server;
+            return;
+          }
+
+          if (server.data_history?.[0]?.tmux_panes) {
+            const content = server.data_history[0].tmux_panes
+              .map((pane) => pane.content || "")
+              .join(" ")
+              .toLowerCase();
+
+            if (content.includes(searchTerm)) {
+              filteredServers[serverName] = server;
+              return;
+            }
+          }
+          break;
       }
     });
 
@@ -361,6 +552,13 @@ const App = () => {
 
   const handleKeyPress = useCallback(
     (event) => {
+      // Handle help key globally
+      if (event.key === "?") {
+        event.preventDefault();
+        setShowHelp(true);
+        return;
+      }
+
       if (
         (isSearching && !isSearchHidden) ||
         event.target.tagName === "INPUT" ||
@@ -514,8 +712,11 @@ const App = () => {
       serverNames,
       selectedServerIndex,
       isSearching,
+      isSearchHidden,
       zoomedServer,
       totalPages,
+      currentPage,
+      serversPerPage,
     ],
   );
 
@@ -648,6 +849,7 @@ const App = () => {
             onSearchHide={handleSearchHide}
             searchResults={Object.keys(filteredServers).length}
             totalServers={Object.keys(servers).length}
+            searchMode={getSearchMode(searchQuery)}
           />
         )}
 
@@ -663,13 +865,13 @@ const App = () => {
             {zoomedServer ? (
               <>
                 jk/up/down: navigate zoomed servers • 1-9: switch windows •
-                Esc/Enter/z: close
+                Esc/Enter/z: close • ?: help
               </>
             ) : (
               <>
                 {isSearching && !isSearchHidden
-                  ? "Esc: Close • Enter: Hide "
-                  : "hjkl/arrows: navigate • Enter/z: zoom • /: search • 1-9: pages"}
+                  ? "Esc: Close • Enter: Hide • ?: help"
+                  : "hjkl/arrows: navigate • Enter/z: zoom • /: search • 1-9: pages • ?: help"}
               </>
             )}
           </div>
@@ -684,6 +886,8 @@ const App = () => {
           isZoomed={true}
         />
       )}
+
+      {showHelp && <HelpPopup onClose={() => setShowHelp(false)} />}
     </div>
   );
 };

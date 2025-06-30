@@ -3,6 +3,7 @@
 A real-time server monitoring system with tmux session viewing, keyboard navigation, and clean terminal-inspired interface.
 
 ![Dashboard Screenshot](screenshots/dashboard.png)
+![Search Mode](screenshots/search-mode.png)
 ![Zoom View](screenshots/zoom-view.png)
 
 ## **Overview**
