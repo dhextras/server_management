@@ -34,69 +34,22 @@ export const SearchBar = ({
   };
 
   return (
-    <div
-      style={{
-        position: "fixed",
-        bottom: 0,
-        left: 0,
-        right: 0,
-        background: "#1a1a1a",
-        borderTop: "2px solid #7d56f4",
-        padding: "12px 20px",
-        display: "flex",
-        alignItems: "center",
-        gap: "12px",
-        zIndex: 1000,
-        boxShadow: "0 -4px 20px rgba(0, 0, 0, 0.5)",
-      }}
-    >
+    <div className="fixed bottom-0 left-0 right-0 z-[1000] flex items-center gap-3 border-t-2 border-purple-500 bg-zinc-900 p-3 shadow-2xl md:px-5">
       <style>{`
         .search-input::placeholder {
           color: #666;
           font-style: italic;
         }
-        .search-results-indicator {
-          transition: all 0.2s ease;
-        }
-        @media (max-width: 768px) {
-          .search-bar {
-            padding: 10px 15px !important;
-          }
-          .search-input {
-            font-size: 0.9rem !important;
-          }
-          .search-hint {
-            display: none !important;
-          }
-        }
       `}</style>
 
-      <div
-        style={{
-          color: "#7d56f4",
-          fontWeight: "bold",
-          fontSize: "1.1rem",
-          minWidth: "20px",
-          display: "flex",
-          alignItems: "center",
-        }}
-      >
+      <div className="flex min-w-[20px] items-center text-lg font-bold text-purple-500">
         🔍
       </div>
 
       <input
         ref={inputRef}
         type="text"
-        className="search-input"
-        style={{
-          flex: 1,
-          background: "transparent",
-          border: "none",
-          color: "#fff",
-          fontSize: "1rem",
-          outline: "none",
-          padding: "6px 0",
-        }}
+        className="search-input flex-1 border-none bg-transparent py-1.5 text-base text-sm text-white outline-none md:text-base"
         value={searchQuery}
         onChange={(e) => onSearchChange(e.target.value)}
         onKeyDown={handleKeyDown}
@@ -106,19 +59,13 @@ export const SearchBar = ({
       />
 
       <div
-        className="search-results-indicator"
-        style={{
-          color:
-            searchResults === 0
-              ? "#ff6b6b"
-              : searchResults === totalServers
-                ? "#666"
-                : "#7d56f4",
-          fontSize: "0.85rem",
-          fontWeight: "500",
-          minWidth: "80px",
-          textAlign: "right",
-        }}
+        className={`min-w-[80px] text-right text-xs font-medium transition-all duration-200 md:text-sm ${
+          searchResults === 0
+            ? "text-red-400"
+            : searchResults === totalServers
+              ? "text-gray-500"
+              : "text-purple-500"
+        }`}
       >
         {searchQuery.length > 0 ? (
           <span>
@@ -126,51 +73,29 @@ export const SearchBar = ({
             {searchResults === 0 && " (no matches)"}
           </span>
         ) : (
-          <span style={{ color: "#666" }}>{totalServers} total</span>
+          <span className="text-gray-500">{totalServers} total</span>
         )}
       </div>
 
-      <div
-        style={{
-          display: "flex",
-          gap: "8px",
-          alignItems: "center",
-        }}
-      >
+      <div className="flex items-center gap-2">
         {searchQuery.length > 0 && (
           <button
-            style={{
-              background: "rgba(255, 107, 107, 0.2)",
-              border: "1px solid rgba(255, 107, 107, 0.4)",
-              color: "#ff6b6b",
-              padding: "4px 8px",
-              borderRadius: "4px",
-              fontSize: "0.8rem",
-              cursor: "pointer",
-              fontWeight: "500",
-            }}
+            className="cursor-pointer rounded border border-red-400/40 bg-red-500/20 px-2 py-1 text-xs font-medium text-red-400 transition-colors hover:bg-red-500/30"
             onClick={onSearchCancel}
             title="Close search"
           >
-            Close (Esc)
+            <span className="hidden md:inline">Close (Esc)</span>
+            <span className="md:hidden">Esc</span>
           </button>
         )}
 
         <button
-          style={{
-            background: "rgba(125, 86, 244, 0.2)",
-            border: "1px solid rgba(125, 86, 244, 0.4)",
-            color: "#7d56f4",
-            padding: "4px 8px",
-            borderRadius: "4px",
-            fontSize: "0.8rem",
-            cursor: "pointer",
-            fontWeight: "500",
-          }}
+          className="cursor-pointer rounded border border-purple-400/40 bg-purple-500/20 px-2 py-1 text-xs font-medium text-purple-400 transition-colors hover:bg-purple-500/30"
           onClick={onSearchHide}
           title="Hide search"
         >
-          Hide (Enter)
+          <span className="hidden md:inline">Hide (Enter)</span>
+          <span className="md:hidden">Enter</span>
         </button>
       </div>
     </div>

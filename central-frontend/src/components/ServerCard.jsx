@@ -47,7 +47,7 @@ const AdaptiveStatusIndicators = ({ stats, cardWidth }) => {
             }}
           />
           <span
-            style={{ color: "#fff", fontWeight: "500", fontSize: "0.95rem" }}
+            style={{ color: "#fff", fontWeight: "500", fontSize: "1.15rem" }}
           >
             CPU:
           </span>
@@ -72,7 +72,7 @@ const AdaptiveStatusIndicators = ({ stats, cardWidth }) => {
             }}
           />
           <span
-            style={{ color: "#fff", fontWeight: "500", fontSize: "0.95rem" }}
+            style={{ color: "#fff", fontWeight: "500", fontSize: "1.15rem" }}
           >
             MEM:
           </span>
@@ -100,7 +100,7 @@ const AdaptiveStatusIndicators = ({ stats, cardWidth }) => {
             }}
           />
           <span
-            style={{ color: "#fff", fontWeight: "500", fontSize: "0.95rem" }}
+            style={{ color: "#fff", fontWeight: "500", fontSize: "1.15rem" }}
           >
             DSK:
           </span>
@@ -176,67 +176,28 @@ export const ServerCard = ({
   isSelected,
   onClick,
   onDoubleClick,
+  onClose,
+  isZoomed = false,
 }) => {
-  const [cardDimensions, setCardDimensions] = useState({ width: 0, height: 0 });
-  const cardRef = useRef(null);
+  const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
+  const containerRef = useRef(null);
 
   useEffect(() => {
     const updateDimensions = () => {
-      if (cardRef.current) {
-        const rect = cardRef.current.getBoundingClientRect();
-        setCardDimensions({ width: rect.width, height: rect.height });
+      if (containerRef.current) {
+        const rect = containerRef.current.getBoundingClientRect();
+        setDimensions({ width: rect.width, height: rect.height });
       }
     };
 
     updateDimensions();
     const resizeObserver = new ResizeObserver(updateDimensions);
-    if (cardRef.current) {
-      resizeObserver.observe(cardRef.current);
+    if (containerRef.current) {
+      resizeObserver.observe(containerRef.current);
     }
 
     return () => resizeObserver.disconnect();
   }, []);
-
-  if (!server || !server.data_history || server.data_history.length === 0) {
-    return (
-      <div
-        ref={cardRef}
-        style={{
-          background: "#1a1a1a",
-          border: `2px solid ${isSelected ? "#7D56F4" : "#333"}`,
-          borderRadius: "8px",
-          padding: "16px",
-          minHeight: "380px",
-          maxHeight: "35vh",
-          display: "flex",
-          flexDirection: "column",
-          transition: "all 0.2s",
-          cursor: "pointer",
-          position: "relative",
-          justifyContent: "center",
-          alignItems: "center",
-          color: "#666",
-        }}
-        onClick={onClick}
-        onDoubleClick={onDoubleClick}
-      >
-        <style>{`
-          .no-data-card:hover {
-            border-color: #7D56F4 !important;
-            transform: translateY(-2px) !important;
-            box-shadow: 0 4px 12px rgba(125, 86, 244, 0.2) !important;
-          }
-        `}</style>
-
-        <div style={{ fontSize: "1rem", fontWeight: "bold" }}>{serverName}</div>
-        <div style={{ fontSize: "0.9rem", marginTop: "8px", opacity: 0.7 }}>
-          No data available
-        </div>
-      </div>
-    );
-  }
-
-  const latestData = server.data_history[server.data_history.length - 1];
 
   const getStatusColor = (state) => {
     switch (state) {
@@ -251,103 +212,215 @@ export const ServerCard = ({
     }
   };
 
+  // No data state
+  if (!server || !server.data_history || server.data_history.length === 0) {
+    const content = (
+      <div
+        ref={containerRef}
+        style={{
+          background: "#1a1a1a",
+          border: `2px solid ${isSelected ? "#7D56F4" : "#333"}`,
+          borderRadius: isZoomed ? "12px" : "8px",
+          padding: isZoomed ? "24px" : "16px",
+          minHeight: isZoomed ? "auto" : "380px",
+          maxHeight: isZoomed ? "90vh" : "35vh",
+          maxWidth: isZoomed ? "90vw" : "auto",
+          display: "flex",
+          flexDirection: "column",
+          transition: "all 0.2s",
+          cursor: isZoomed ? "default" : "pointer",
+          position: "relative",
+          justifyContent: "center",
+          alignItems: "center",
+          color: "#666",
+          ...(isZoomed && {
+            width: "90vw",
+            height: "90vh",
+          }),
+        }}
+        onClick={isZoomed ? (e) => e.stopPropagation() : onClick}
+        onDoubleClick={!isZoomed ? onDoubleClick : undefined}
+      >
+        <div style={{ fontSize: "1rem", fontWeight: "bold" }}>
+          {serverName || "Unknown Server"}
+        </div>
+        <div style={{ fontSize: "0.9rem", marginTop: "8px", opacity: 0.7 }}>
+          No data available
+        </div>
+        {isZoomed && (
+          <div style={{ fontSize: "1rem", marginTop: "12px", opacity: 0.7 }}>
+            Press Esc to close
+          </div>
+        )}
+      </div>
+    );
+
+    if (isZoomed) {
+      return (
+        <div
+          style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: "rgba(0, 0, 0, 0.8)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 1000,
+          }}
+          onClick={onClose}
+        >
+          {content}
+        </div>
+      );
+    }
+
+    return content;
+  }
+
+  const latestData = server.data_history[server.data_history.length - 1];
+
   const handleClick = (e) => {
-    e.preventDefault();
-    onClick();
+    if (!isZoomed) {
+      e.preventDefault();
+      onClick();
+    }
   };
 
   const handleDoubleClick = (e) => {
-    e.preventDefault();
-    onDoubleClick();
+    if (!isZoomed) {
+      e.preventDefault();
+      onDoubleClick();
+    }
   };
 
-  return (
+  const content = (
     <div
-      ref={cardRef}
+      ref={containerRef}
       style={{
         background: "#1a1a1a",
-        border: `2px solid ${isSelected ? "#7D56F4" : "#333"}`,
-        borderRadius: "8px",
-        padding: cardDimensions.width < 350 ? "12px" : "16px",
-        minHeight: "380px",
-        maxHeight: "35vh",
+        border: `2px solid ${isZoomed ? "#7D56F4" : isSelected ? "#7D56F4" : "#333"}`,
+        borderRadius: isZoomed ? "12px" : "8px",
+        padding: isZoomed ? "24px" : dimensions.width < 350 ? "12px" : "16px",
+        minHeight: isZoomed ? "auto" : "380px",
+        maxHeight: isZoomed ? "90vh" : "35vh",
         display: "flex",
         flexDirection: "column",
         transition: "all 0.2s",
-        cursor: "pointer",
+        cursor: isZoomed ? "default" : "pointer",
         position: "relative",
         overflow: "hidden",
+        ...(isZoomed && {
+          width: "90vw",
+          height: "90vh",
+        }),
       }}
-      onClick={handleClick}
-      onDoubleClick={handleDoubleClick}
-      className="server-card"
+      onClick={isZoomed ? (e) => e.stopPropagation() : handleClick}
+      onDoubleClick={isZoomed ? undefined : handleDoubleClick}
+      className={isZoomed ? "" : "server-card"}
     >
-      <style>{`
-        @media (max-width: 767px) {
-          .server-card {
-            min-height: 250px !important;
-            padding: 12px !important;
+      {!isZoomed && (
+        <style>{`
+          @media (max-width: 767px) {
+            .server-card {
+              min-height: 250px !important;
+              padding: 12px !important;
+            }
           }
-        }
-      `}</style>
+        `}</style>
+      )}
 
+      {/* Header */}
       <div
         style={{
           display: "flex",
-          alignItems: "flex-start",
-          marginBottom: cardDimensions.width < 350 ? "8px" : "12px",
-          gap: "8px",
-          flexDirection: cardDimensions.width < 350 ? "column" : "row",
+          alignItems: "center",
+          justifyContent: "space-between",
+          marginBottom: isZoomed
+            ? "16px"
+            : dimensions.width < 350
+              ? "8px"
+              : "12px",
+          paddingBottom: isZoomed ? "12px" : "0",
+          borderBottom: isZoomed ? "1px solid #333" : "none",
+          flexWrap: isZoomed && dimensions.width < 600 ? "wrap" : "nowrap",
+          gap: isZoomed ? "12px" : "8px",
         }}
       >
         <div
           style={{
             display: "flex",
             alignItems: "center",
-            gap: "8px",
+            gap: isZoomed ? "12px" : "8px",
             flex: "1",
             minWidth: 0,
           }}
         >
           <div
             style={{
-              width: "8px",
-              height: "8px",
+              width: isZoomed ? "12px" : "8px",
+              height: isZoomed ? "12px" : "8px",
               borderRadius: "50%",
               background: getStatusColor(server.state),
               flexShrink: 0,
             }}
-          ></div>
+          />
 
-          <div
-            style={{
-              fontSize: cardDimensions.width < 350 ? "0.9rem" : "1rem",
-              fontWeight: "bold",
-              color: "#fff",
-              whiteSpace: "nowrap",
-              overflow: "hidden",
-              textOverflow: "ellipsis",
-              flex: 1,
-              minWidth: 0,
-            }}
-          >
-            {serverName}
-          </div>
+          {isZoomed ? (
+            <h2
+              style={{
+                margin: 0,
+                fontSize: dimensions.width < 600 ? "1.2rem" : "1.5rem",
+                fontWeight: "bold",
+                color: "#fff",
+                whiteSpace: "nowrap",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                flex: 1,
+                minWidth: 0,
+              }}
+            >
+              {latestData.server_name || serverName}
+            </h2>
+          ) : (
+            <div
+              style={{
+                fontSize: dimensions.width < 350 ? "0.9rem" : "1rem",
+                fontWeight: "bold",
+                color: "#fff",
+                whiteSpace: "nowrap",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                flex: 1,
+                minWidth: 0,
+              }}
+            >
+              {serverName}
+            </div>
+          )}
         </div>
 
         <div
           style={{
+            display: "flex",
+            alignItems: "center",
+            gap: isZoomed ? "16px" : "0",
             flexShrink: 0,
-            alignSelf: cardDimensions.width < 350 ? "flex-start" : "center",
+            flexWrap: isZoomed && dimensions.width < 600 ? "wrap" : "nowrap",
+            alignSelf:
+              !isZoomed && dimensions.width < 350 ? "flex-start" : "center",
           }}
         >
           <AdaptiveStatusIndicators
             stats={latestData.system_stats}
-            cardWidth={cardDimensions.width}
+            cardWidth={dimensions.width}
           />
         </div>
       </div>
 
+      {/* Content */}
       <div
         style={{
           flex: 1,
@@ -377,4 +450,30 @@ export const ServerCard = ({
       </div>
     </div>
   );
+
+  // Wrap in modal overlay if zoomed
+  if (isZoomed) {
+    return (
+      <div
+        style={{
+          position: "fixed",
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: "rgba(0, 0, 0, 0.8)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          zIndex: 1000,
+          padding: "20px",
+        }}
+        onClick={onClose}
+      >
+        {content}
+      </div>
+    );
+  }
+
+  return content;
 };

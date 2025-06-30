@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { SearchBar } from "./components/SearchBar";
+import { ServerCard } from "./components/ServerCard";
 import { ServerGrid } from "./components/ServerGrid";
-import { ZoomModal } from "./components/ZoomModal";
 
 const App = () => {
   const [servers, setServers] = useState({});
@@ -372,7 +372,7 @@ const App = () => {
       const key = event.key;
 
       setCurrentKeys((prev) => prev + key);
-      setTimeout(() => setCurrentKeys(""), 1000);
+      setTimeout(() => setCurrentKeys(""), 300);
 
       if (["1", "2", "3", "4", "5", "6", "7", "8", "9"].includes(key)) {
         event.preventDefault();
@@ -417,7 +417,24 @@ const App = () => {
           (serverNames.length - lastPage * serverPerPage - 1) / layout.cols,
         );
 
-        if (direction.toLowerCase() === "left") {
+        if (zoomedServer) {
+          const tempZoomedIndex =
+            direction.toLowerCase() === "down"
+              ? selectedServerIndex + 1
+              : direction.toLowerCase() === "up" && selectedServerIndex - 1;
+
+          if (serverNames[tempZoomedIndex]) {
+            const actualServerName =
+              Object.keys(servers).find(
+                (name) =>
+                  Object.keys(filteredServers).includes(name) &&
+                  Object.keys(filteredServers).indexOf(name) ===
+                    tempZoomedIndex,
+              ) || serverNames[tempZoomedIndex];
+            setZoomedServer(actualServerName);
+            setSelectedServerIndex(tempZoomedIndex);
+          }
+        } else if (direction.toLowerCase() === "left") {
           if (currentCol > 0) {
             newIndex = Math.max(newIndex - 1, 0);
           } else if (currentCol === 0 && currentPage !== 0) {
@@ -524,6 +541,10 @@ const App = () => {
     setIsSearchHidden(true);
   };
 
+  const handleZoomclose = () => {
+    setZoomedServer(null);
+  };
+
   const openSearch = () => {
     setIsSearching(true);
     setIsSearchHidden(false);
@@ -543,134 +564,63 @@ const App = () => {
   };
 
   const getSyncStatusColor = () => {
-    if (syncState.isRunning) return "#7d56f4";
-    if (syncState.hasError) return "#ff6b6b";
-    return "#666";
+    if (syncState.isRunning) return "text-purple-400";
+    if (syncState.hasError) return "text-red-400";
+    return "text-gray-500";
   };
 
   return (
     <div
-      style={{
-        minHeight: "100vh",
-        background: "#0a0a0a",
-        color: "#ffffff",
-        display: "flex",
-        flexDirection: "column",
-      }}
+      className="flex min-h-screen flex-col bg-black text-white"
       tabIndex={0}
     >
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          padding: "12px 20px",
-          gap: "12px",
-        }}
-      >
-        <div
-          style={{
-            fontSize: "0.8rem",
-            color: getSyncStatusColor(),
-            display: "flex",
-            gap: "12px",
-          }}
-        >
+      <div className="flex items-center justify-between gap-3 px-5 py-3">
+        <div className={`flex gap-3 text-xs ${getSyncStatusColor()}`}>
           <>
             {true && <span>{getSyncStatusText()}</span>}
             {lastFullSync && <span>{Object.keys(servers).length} servers</span>}
           </>
         </div>
 
-        <div style={{ display: "flex", gap: "12px", alignItems: "center" }}>
+        <div className="flex items-center gap-3">
           <div
-            style={{
-              padding: "7px 12px",
-              borderRadius: "6px",
-              fontSize: "1rem",
-              color: connected ? "#04B575" : "#ff6b6b",
-              fontWeight: "500",
-            }}
+            className={`rounded-md px-3 py-1.5 text-base font-medium ${
+              connected ? "text-emerald-400" : "text-red-400"
+            }`}
           >
             {connected ? "🟢 Connected" : "🔴 Disconnected"}
           </div>
 
           <button
-            style={{
-              padding: "10px 12px",
-              border: "1px solid rgba(125, 86, 244, 0.4)",
-              background: isSearching
-                ? "rgba(125, 86, 244, 0.3)"
-                : "rgba(125, 86, 244, 0.1)",
-              color: "#7d56f4",
-              borderRadius: "6px",
-              cursor: "pointer",
-              fontSize: "1rem",
-              fontWeight: "500",
-              transition: "all 0.2s",
-            }}
+            className={`cursor-pointer rounded-md border border-purple-400/40 px-3 py-2.5 text-base font-medium text-purple-400 transition-all duration-200 hover:bg-purple-500/40 ${
+              isSearching ? "bg-purple-500/30" : "bg-purple-500/10"
+            }`}
             onClick={openSearch}
-            onMouseEnter={(e) => {
-              e.target.style.background = "rgba(125, 86, 244, 0.4)";
-            }}
-            onMouseLeave={(e) => {
-              e.target.style.background = isSearching
-                ? "rgba(125, 86, 244, 0.3)"
-                : "rgba(125, 86, 244, 0.1)";
-            }}
           >
             🔍 Search (/)
           </button>
         </div>
       </div>
 
-      <div
-        style={{
-          flex: 1,
-          display: "flex",
-          flexDirection: "column",
-          position: "relative",
-        }}
-      >
-        <div style={{ flex: 1 }}>
+      <div className="relative flex flex-1 flex-col">
+        <div className="flex-1">
           {Object.keys(servers).length === 0 ? (
-            <div
-              style={{
-                display: "flex",
-                flexDirection: "column",
-                justifyContent: "center",
-                alignItems: "center",
-                height: "100%",
-                color: "#666",
-              }}
-            >
+            <div className="flex h-full flex-col items-center justify-center text-gray-500">
               <div>No servers connected</div>
-              <div
-                style={{ fontSize: "0.9rem", marginTop: "10px", color: "#444" }}
-              >
+              <div className="mt-2.5 text-sm text-gray-700">
                 Start child data collectors to see them here
               </div>
             </div>
           ) : (
             <>
               {isSearching && searchQuery && (
-                <div
-                  style={{
-                    background: "rgba(125, 86, 244, 0.1)",
-                    border: "1px solid rgba(125, 86, 244, 0.3)",
-                    borderRadius: "8px",
-                    padding: "12px 16px",
-                    marginBottom: "20px",
-                    color: "#7d56f4",
-                    fontSize: "0.9rem",
-                  }}
-                >
+                <div className="mx-5 mb-5 rounded-lg border border-purple-500/30 bg-purple-500/10 p-3 text-sm text-purple-400">
                   <strong>Search Results:</strong> Found{" "}
                   {Object.keys(filteredServers).length} server
                   {Object.keys(filteredServers).length !== 1 ? "s" : ""}
                   {searchQuery && ` matching "${searchQuery}"`}
                   {Object.keys(filteredServers).length === 0 && (
-                    <span style={{ color: "#ff6b6b", marginLeft: "8px" }}>
+                    <span className="ml-2 text-red-400">
                       - Try a different search term
                     </span>
                   )}
@@ -702,28 +652,19 @@ const App = () => {
         )}
 
         <div
-          style={{
-            position: "fixed",
-            bottom: isSearching && !isSearchHidden ? "80px" : "20px",
-            right: "20px",
-            background: "rgba(0, 0, 0, 0.8)",
-            padding: "8px 12px",
-            borderRadius: "6px",
-            fontSize: "0.75rem",
-            zIndex: 9999,
-            color: "#666",
-            pointerEvents: "none",
-            transition: "all 0.2s",
-          }}
+          className={`pointer-events-none fixed right-5 z-[9999] rounded-md bg-black/80 px-3 py-2 text-xs text-gray-500 transition-all duration-200 ${
+            isSearching && !isSearchHidden ? "bottom-20" : "bottom-5"
+          }`}
         >
           {currentKeys && (
-            <div style={{ color: "#7d56f4", marginBottom: "4px" }}>
-              Key: {currentKeys}
-            </div>
+            <div className="mb-1 text-purple-400">Key: {currentKeys}</div>
           )}
           <div>
             {zoomedServer ? (
-              <>1-9: switch windows • Esc/Enter/z: close</>
+              <>
+                jk/up/down: navigate zoomed servers • 1-9: switch windows •
+                Esc/Enter/z: close
+              </>
             ) : (
               <>
                 {isSearching && !isSearchHidden
@@ -736,9 +677,11 @@ const App = () => {
       </div>
 
       {zoomedServer && (
-        <ZoomModal
+        <ServerCard
           server={servers[zoomedServer]}
-          onClose={() => setZoomedServer(null)}
+          onClose={handleZoomclose}
+          serverName={zoomedServer}
+          isZoomed={true}
         />
       )}
     </div>

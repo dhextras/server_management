@@ -91,99 +91,31 @@ export const ServerGrid = ({
   }, [selectedIndex, serversPerPage]);
 
   return (
-    <div
-      style={{
-        width: "100%",
-        minHeight: "100vh",
-        padding: "20px",
-        paddingTop: "5px",
-        display: "flex",
-        flexDirection: "column",
-      }}
-    >
+    <div className="flex min-h-screen w-full flex-col p-5 pt-1">
       <style>{`
-.server-grid-container {
-display: grid;
-grid-template-columns: repeat(${layout.cols}, 1fr);
-grid-template-rows: repeat(${layout.rows}, minmax(280px, 1fr));
-gap: 16px;
-width: 100%;
-max-width: 100%;
-margin: 0 auto;
-flex: 1;
-}
-
-.pagination-button {
-background: rgba(125, 86, 244, 0.2);
-border: 1px solid rgba(125, 86, 244, 0.4);
-color: #7d56f4;
-padding: 8px 16px;
-border-radius: 6px;
-font-size: 0.9rem;
-cursor: pointer;
-transition: all 0.2s;
-font-weight: 500;
-}
-
-.pagination-button:hover {
-background: rgba(125, 86, 244, 0.3);
-border-color: rgba(125, 86, 244, 0.6);
-transform: translateY(-1px);
-}
-
-.pagination-button:disabled {
-background: rgba(125, 86, 244, 0.1);
-border-color: rgba(125, 86, 244, 0.2);
-color: #666;
-cursor: not-allowed;
-transform: none;
-}
-
-.page-number {
-background: rgba(125, 86, 244, 0.2);
-border: 1px solid rgba(125, 86, 244, 0.4);
-color: #7d56f4;
-padding: 6px 12px;
-border-radius: 4px;
-font-size: 0.8rem;
-cursor: pointer;
-transition: all 0.2s;
-min-width: 32px;
-text-align: center;
-}
-
-.page-number.active {
-background: #7d56f4;
-color: #fff;
-border-color: #7d56f4;
-}
-
-.page-number:hover:not(.active) {
-background: rgba(125, 86, 244, 0.3);
-}
-`}</style>
+        .server-grid-container {
+          display: grid;
+          grid-template-columns: repeat(${layout.cols}, 1fr);
+          grid-template-rows: repeat(${layout.rows}, minmax(280px, 1fr));
+          gap: 16px;
+          width: 100%;
+          max-width: 100%;
+          margin: 0 auto;
+          flex: 1;
+        }
+      `}</style>
 
       {totalPages > 1 && (
-        <div
-          style={{
-            display: "flex",
-            flexDirection: "column",
-            justifyContent: "center",
-            alignItems: "center",
-            gap: "12px",
-          }}
-        >
-          <div
-            style={{
-              display: "flex",
-              gap: "6px",
-              alignItems: "center",
-            }}
-          >
+        <div className="flex flex-col items-center justify-center gap-3">
+          <div className="flex items-center gap-1.5">
             {Array.from({ length: totalPages }, (_, i) => (
               <button
                 key={i}
-                className={`page-number ${i === currentPage ? "active" : ""}`}
+                className={`min-w-[32px] cursor-pointer rounded border border-purple-400/40 bg-purple-500/20 px-3 py-1.5 text-center text-xs text-purple-400 transition-all duration-200 hover:bg-purple-500/30 ${
+                  i === currentPage
+                    ? "!border-purple-500 !bg-purple-500 !text-white"
+                    : ""
+                }`}
                 onClick={() => {
                   onPageChange(i);
                   onServerSelect(i * serversPerPage);
@@ -194,18 +126,7 @@ background: rgba(125, 86, 244, 0.3);
             ))}
           </div>
 
-          <div
-            style={{
-              display: "flex",
-              flexDirection: "row",
-              justifyContent: "center",
-              alignItems: "center",
-              gap: "8px",
-              marginBottom: "16px",
-              fontSize: "0.8rem",
-              color: "#666",
-            }}
-          >
+          <div className="mb-4 flex flex-row items-center justify-center gap-2 text-xs text-gray-500">
             <span>
               Grid: {layout.cols}×{layout.rows} • Showing{" "}
               {currentServers.length} of {serverNames.length} servers{" "}
@@ -234,6 +155,7 @@ background: rgba(125, 86, 244, 0.3);
             isSelected={localIndex === getLocalSelectedIndex()}
             onClick={() => handleCardClick(localIndex)}
             onDoubleClick={() => handleCardDoubleClick(serverName)}
+            isZoomed={false}
           />
         ))}
       </div>

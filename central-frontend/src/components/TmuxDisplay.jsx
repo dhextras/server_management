@@ -91,21 +91,7 @@ export const TmuxDisplay = ({ dataHistory, sessionName }) => {
 
   if (!tmuxPanes || tmuxPanes.length === 0) {
     return (
-      <div
-        style={{
-          width: "100%",
-          maxWidth: "70vw",
-          height: "100%",
-          maxHeight: "80vh",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          color: "#666",
-          fontSize: "1rem",
-          border: "1px dashed #333",
-          borderRadius: "8px",
-        }}
-      >
+      <div className="flex h-full max-h-[80vh] w-full max-w-[70vw] items-center justify-center rounded-lg border border-dashed border-gray-600 text-base text-gray-500">
         No tmux content
       </div>
     );
@@ -147,19 +133,7 @@ export const TmuxDisplay = ({ dataHistory, sessionName }) => {
     return (
       <div
         key={pane.id}
-        style={{
-          flex: 1,
-          background: "#0a0a0a",
-          border: "1px solid #333",
-          borderRadius: "6px",
-          padding: "8px",
-          overflow: "hidden",
-          position: "relative",
-          fontSize: "0.85rem",
-          lineHeight: 1.4,
-          minHeight: "0",
-          minWidth: "0",
-        }}
+        className="relative min-h-0 min-w-0 flex-1 overflow-hidden rounded-md border border-gray-600 bg-black p-2 text-sm leading-relaxed"
       >
         <div
           ref={(el) => {
@@ -167,34 +141,12 @@ export const TmuxDisplay = ({ dataHistory, sessionName }) => {
               paneRefs.current[paneKey] = el;
             }
           }}
-          style={{
-            height: "100%",
-            overflowY: "auto",
-            overflowX: "auto",
-            whiteSpace: "pre-wrap",
-            wordWrap: "break-word",
-            color: "#ddd",
-            scrollbarWidth: "thin",
-            scrollbarColor: "#555 #222",
-          }}
+          className="scrollbar-thin scrollbar-track-gray-800 scrollbar-thumb-gray-600 h-full overflow-auto whitespace-pre-wrap break-words text-gray-300"
         >
           <AnsiText>{pane.content.replace(/\n+$/, "")}</AnsiText>
         </div>
 
-        <div
-          style={{
-            position: "absolute",
-            top: "6px",
-            left: "6px",
-            background: "rgba(125, 86, 244, 0.8)",
-            color: "#fff",
-            padding: "2px 6px",
-            borderRadius: "3px",
-            fontSize: "0.9rem",
-            fontWeight: "bold",
-            pointerEvents: "none",
-          }}
-        >
+        <div className="pointer-events-none absolute left-1.5 top-1.5 rounded bg-purple-500/80 px-1.5 py-0.5 text-sm font-bold text-white">
           {pane.id}
         </div>
       </div>
@@ -202,86 +154,27 @@ export const TmuxDisplay = ({ dataHistory, sessionName }) => {
   };
 
   return (
-    <div
-      style={{
-        width: "100%",
-        height: "100%",
-        maxHeight: "80vh",
-        display: "flex",
-        flexDirection: "column",
-        minHeight: "300px",
-      }}
-    >
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          marginBottom: "8px",
-          padding: "8px 12px",
-          background: "#0f0f0f",
-          borderRadius: "6px",
-          fontSize: "0.9rem",
-          border: "1px solid #333",
-        }}
-      >
-        <div
-          style={{
-            color: "#7d56f4",
-            fontWeight: "600",
-            display: "flex",
-            alignItems: "center",
-            gap: "6px",
-          }}
-        >
+    <div className="flex h-full max-h-[80vh] min-h-[300px] w-full flex-col">
+      <div className="mb-2 flex items-center justify-between rounded-md border border-gray-600 bg-zinc-900 px-3 py-2 text-sm">
+        <div className="flex items-center gap-1.5 font-semibold text-purple-400">
           <span>📱</span>
           <span>{sessionName || "session"}</span>
-          <span style={{ color: "#666", fontSize: "0.8rem" }}>
+          <span className="text-xs text-gray-500">
             ({dataHistory ? dataHistory.length : 0} history entries)
           </span>
         </div>
 
         {windowIds.length > 1 && (
-          <div
-            style={{
-              display: "flex",
-              gap: "4px",
-              alignItems: "center",
-              background: "rgba(125, 86, 244, 0.1)",
-              padding: "4px 8px",
-              borderRadius: "4px",
-              flexWrap: "wrap",
-            }}
-          >
+          <div className="flex flex-wrap items-center gap-1 rounded bg-purple-500/10 px-2 py-1">
             {windowIds.map((windowId, index) => (
               <button
                 key={windowId}
-                style={{
-                  background:
-                    index === selectedWindowIndex
-                      ? "rgba(125, 86, 244, 0.6)"
-                      : "rgba(125, 86, 244, 0.3)",
-                  border: "none",
-                  color: "#7d56f4",
-                  padding: "4px 8px",
-                  borderRadius: "3px",
-                  fontSize: "0.8rem",
-                  cursor: "pointer",
-                  fontWeight: index === selectedWindowIndex ? "bold" : "normal",
-                  minWidth: "28px",
-                  transition: "all 0.2s",
-                }}
+                className={`min-w-[28px] cursor-pointer rounded border-none px-2 py-1 text-xs font-normal transition-all duration-200 ${
+                  index === selectedWindowIndex
+                    ? "bg-purple-500/60 font-bold text-purple-400"
+                    : "bg-purple-500/30 text-purple-400 hover:bg-purple-500/50"
+                }`}
                 onClick={() => switchToWindow(index)}
-                onMouseEnter={(e) => {
-                  if (index !== selectedWindowIndex) {
-                    e.target.style.background = "rgba(125, 86, 244, 0.5)";
-                  }
-                }}
-                onMouseLeave={(e) => {
-                  if (index !== selectedWindowIndex) {
-                    e.target.style.background = "rgba(125, 86, 244, 0.3)";
-                  }
-                }}
                 title={`Switch to window ${index + 1} (${windowId})`}
               >
                 {index + 1}
@@ -292,54 +185,34 @@ export const TmuxDisplay = ({ dataHistory, sessionName }) => {
       </div>
 
       <div
-        style={{
-          flex: 1,
-          display: "flex",
-          flexDirection: currentWindowPanes.length > 1 ? "row" : "column",
-          gap: "8px",
-          minHeight: 0,
-          overflowY: "hidden",
-          overflowX: "hidden",
-          padding: "4px",
-          scrollbarWidth: "thin",
-          scrollbarColor: "#555 #222",
-        }}
+        className={`scrollbar-thin scrollbar-track-gray-800 scrollbar-thumb-gray-600 flex min-h-0 flex-1 gap-2 overflow-hidden p-1 ${
+          currentWindowPanes.length > 1 ? "flex-row" : "flex-col"
+        }`}
       >
         {currentWindowPanes.map((pane, index) => renderPane(pane, index))}
       </div>
 
-      <div
-        style={{
-          fontSize: "0.75rem",
-          color: "#666",
-          padding: "6px 12px",
-          textAlign: "center",
-          background: "#0f0f0f",
-          borderRadius: "4px",
-          marginTop: "4px",
-          border: "1px solid #333",
-        }}
-      >
+      <div className="mt-1 rounded border border-gray-600 bg-zinc-900 px-3 py-1.5 text-center text-xs text-gray-500">
         Window {currentWindowId}: {currentWindowPanes.length} pane
         {currentWindowPanes.length !== 1 ? "s" : ""} • Accumulated from{" "}
         {dataHistory ? dataHistory.length : 0} history entries
       </div>
 
       <style>{`
-        div::-webkit-scrollbar {
+        .scrollbar-thin::-webkit-scrollbar {
           width: 6px;
           height: 6px;
         }
-        div::-webkit-scrollbar-track {
-          background: #222;
+        .scrollbar-track-gray-800::-webkit-scrollbar-track {
+          background: #1f2937;
           border-radius: 3px;
         }
-        div::-webkit-scrollbar-thumb {
-          background: #555;
+        .scrollbar-thumb-gray-600::-webkit-scrollbar-thumb {
+          background: #4b5563;
           border-radius: 3px;
         }
-        div::-webkit-scrollbar-thumb:hover {
-          background: #777;
+        .scrollbar-thumb-gray-600::-webkit-scrollbar-thumb:hover {
+          background: #6b7280;
         }
       `}</style>
     </div>

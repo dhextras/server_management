@@ -461,7 +461,7 @@ func (h *Hub) sendFullSyncToClient(client *Client) {
 			log.Printf("Failed to send initial server update to new client")
 		}
 
-		time.Sleep(200 * time.Millisecond)
+		time.Sleep(50 * time.Millisecond) // NOTE: Remove this if the json data didn't get messed up due to memmory correption
 	}
 
 	completeMsg := Message{
