@@ -1,13 +1,12 @@
 package http
 
 import (
-	"encoding/json"
-	"log"
-	"net/http"
-
 	"central-server/types"
 	"central-server/websocket"
+	"encoding/json"
 	"github.com/gorilla/mux"
+	"log"
+	"net/http"
 )
 
 type HTTPServer struct {
@@ -27,6 +26,7 @@ func NewHTTPServer(port string, serverManager *types.ServerManager, hub *websock
 func (s *HTTPServer) Start() error {
 	r := mux.NewRouter()
 
+	r.Use(s.corsMiddleware)
 	r.HandleFunc("/ws", s.hub.ServeWS)
 
 	api := r.PathPrefix("/api").Subrouter()
@@ -34,13 +34,29 @@ func (s *HTTPServer) Start() error {
 	api.HandleFunc("/servers/{name}", s.handleGetServer).Methods("GET")
 	api.HandleFunc("/health", s.handleHealth).Methods("GET")
 
-	r.PathPrefix("/").Handler(http.FileServer(http.Dir("./web/")))
-
-	log.Printf(" HTTP server listening on port %s", s.port)
-	log.Printf(" Frontend: http://localhost:%s", s.port)
+	log.Printf(" HTTP API server listening on port %s", s.port)
+	log.Printf(" API endpoints: http://localhost:%s/api/", s.port)
 	log.Printf(" WebSocket: ws://localhost:%s/ws", s.port)
 
 	return http.ListenAndServe(":"+s.port, r)
+}
+
+func (s *HTTPServer) corsMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Access-Control-Allow-Origin", "http://localhost:3000")
+		w.Header().Set("Access-Control-Allow-Origin", "https://servers.maribeth.io")
+		w.Header().Set("Access-Control-Allow-Origin", "http://servers.maribeth.io")
+		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+		w.Header().Set("Access-Control-Allow-Credentials", "true")
+
+		if r.Method == "OPTIONS" {
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+
+		next.ServeHTTP(w, r)
+	})
 }
 
 func (s *HTTPServer) handleGetServers(w http.ResponseWriter, r *http.Request) {
