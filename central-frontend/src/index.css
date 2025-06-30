@@ -33,8 +33,7 @@ body {
 ::selection {
   background: rgba(125, 86, 244, 0.3);
 }
-button:focus,
-input:focus {
+button:focus {
   outline: 2px solid #7d56f4;
   outline-offset: 2px;
 }
