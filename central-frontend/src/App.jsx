@@ -88,7 +88,7 @@ const HelpPopup = ({ onClose }) => {
                     server names only
                   </div>
                   <div className="ml-4 text-xs text-gray-500">
-                    Example: <span className="text-blue-300">n:web</span> finds
+                    Example: <span className="text-blue-300">n: web</span> finds
                     servers with "web" in name
                   </div>
                 </div>
@@ -815,7 +815,7 @@ const App = () => {
           ) : (
             <>
               {isSearching && searchQuery && (
-                <div className="mx-5 mb-5 rounded-lg border border-purple-500/30 bg-purple-500/10 p-3 text-sm text-purple-400">
+                <div className="mx-5 mb-5 p-3 text-sm text-purple-400">
                   <strong>Search Results:</strong> Found{" "}
                   {Object.keys(filteredServers).length} server
                   {Object.keys(filteredServers).length !== 1 ? "s" : ""}
