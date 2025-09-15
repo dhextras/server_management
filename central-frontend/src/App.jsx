@@ -75,6 +75,54 @@ const HelpPopup = ({ onClose }) => {
             </div>
           </div>
 
+          <div className="space-y-3">
+            <h3 className="text-lg font-semibold text-emerald-400">
+              Favorites
+            </h3>
+            <div className="space-y-2 text-sm">
+              <div>
+                <span className="text-yellow-400">★</span> - Mark servers as
+                favorites to see them at the top at all time
+              </div>
+              <div className="ml-4 text-xs text-gray-500">
+                (Custom ordering of favorites coming soon...)
+              </div>
+            </div>
+          </div>
+
+          <div className="space-y-3">
+            <h3 className="text-lg font-semibold text-emerald-400">
+              Server Status Colors
+            </h3>
+            <div className="space-y-2 text-sm">
+              <div>
+                <span className="mr-2 inline-block h-3 w-3 rounded bg-purple-500"></span>
+                <span className="text-purple-300">Purple</span> - Selected
+                server
+              </div>
+              <div>
+                <span className="mr-2 inline-block h-3 w-3 rounded bg-red-500"></span>
+                <span className="text-red-300">Red</span> - Dead server
+              </div>
+              <div>
+                <span className="mr-2 inline-block h-3 w-3 rounded bg-yellow-500"></span>
+                <span className="text-yellow-300">Yellow</span> - Stale server
+              </div>
+              <div>
+                <span className="mr-2 inline-block h-3 w-3 rounded bg-orange-500"></span>
+                <span className="text-orange-300">Orange</span> - System issues
+              </div>
+              <div className="ml-5 text-xs text-gray-500">
+                (CPU > 80%, Memory > 60%, or Disk > 95%)
+              </div>
+              <div>
+                <span className="mr-2 inline-block h-3 w-3 rounded bg-gray-600"></span>
+                <span className="text-gray-300">Gray</span> - Default/healthy
+                server
+              </div>
+            </div>
+          </div>
+
           <div className="space-y-3 md:col-span-2">
             <h3 className="text-lg font-semibold text-emerald-400">
               Advanced Search Modes
@@ -148,6 +196,10 @@ const HelpPopup = ({ onClose }) => {
                 results
               </div>
               <div>• Press Esc to completely exit search mode</div>
+              <div>
+                • Server border colors indicate status (selected servers always
+                show purple regardless of status)
+              </div>
             </div>
           </div>
         </div>
@@ -573,6 +625,10 @@ const App = () => {
       setTimeout(() => setCurrentKeys(""), 300);
 
       if (["1", "2", "3", "4", "5", "6", "7", "8", "9"].includes(key)) {
+        if (event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) {
+          return;
+        }
+
         event.preventDefault();
         const pageNum = parseInt(key) - 1;
 

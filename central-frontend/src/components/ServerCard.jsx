@@ -284,13 +284,13 @@ export const ServerCard = ({
             onClick={handleFavoriteClick}
             style={{
               position: "absolute",
-              top: "12px",
-              right: "12px",
+              top: "10px",
+              right: "15px",
               background: "transparent",
               border: "none",
               cursor: "pointer",
               color: isFavorite ? "#FFD700" : "#666",
-              fontSize: "16px",
+              fontSize: "20px",
               padding: "4px",
               borderRadius: "4px",
               transition: "all 0.2s",
@@ -402,13 +402,13 @@ export const ServerCard = ({
           onClick={handleFavoriteClick}
           style={{
             position: "absolute",
-            top: dimensions.width < 350 ? "8px" : "12px",
-            right: dimensions.width < 350 ? "8px" : "12px",
+            top: dimensions.width < 350 ? "6px" : "10px",
+            right: dimensions.width < 350 ? "12px" : "15px",
             background: "transparent",
             border: "none",
             cursor: "pointer",
             color: isFavorite ? "#FFD700" : "#666",
-            fontSize: dimensions.width < 350 ? "14px" : "16px",
+            fontSize: dimensions.width < 350 ? "16px" : "20px",
             padding: "4px",
             borderRadius: "4px",
             transition: "all 0.2s",
