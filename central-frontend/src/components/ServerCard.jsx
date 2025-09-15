@@ -174,9 +174,11 @@ export const ServerCard = ({
   server,
   serverName,
   isSelected,
+  isFavorite,
   onClick,
   onDoubleClick,
   onClose,
+  onToggleFavorite,
   isZoomed = false,
 }) => {
   const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
@@ -212,6 +214,42 @@ export const ServerCard = ({
     }
   };
 
+  const getBorderColor = (server, isSelected) => {
+    if (isSelected) {
+      return "#7D56F4";
+    }
+
+    if (!server || !server.data_history || server.data_history.length === 0) {
+      return "#333";
+    }
+
+    const latestData = server.data_history[server.data_history.length - 1];
+
+    if (server.state === "dead") {
+      return "#ff0000";
+    }
+    if (server.state === "stale") {
+      return "#FFC107";
+    }
+
+    const stats = latestData.system_stats;
+    if (
+      stats.cpu_percent > 80 ||
+      stats.memory.percent > 60 ||
+      stats.disk.percent > 95
+    ) {
+      return "#FF8C00";
+    }
+
+    return "#333";
+  };
+
+  const handleFavoriteClick = (e) => {
+    e.stopPropagation();
+    e.preventDefault();
+    onToggleFavorite(serverName);
+  };
+
   // No data state
   if (!server || !server.data_history || server.data_history.length === 0) {
     const content = (
@@ -219,7 +257,7 @@ export const ServerCard = ({
         ref={containerRef}
         style={{
           background: "#1a1a1a",
-          border: `2px solid ${isSelected ? "#7D56F4" : "#333"}`,
+          border: `2px solid ${getBorderColor(server, isSelected)}`,
           borderRadius: isZoomed ? "12px" : "8px",
           padding: isZoomed ? "24px" : "16px",
           minHeight: isZoomed ? "auto" : "380px",
@@ -241,6 +279,33 @@ export const ServerCard = ({
         onClick={isZoomed ? (e) => e.stopPropagation() : onClick}
         onDoubleClick={!isZoomed ? onDoubleClick : undefined}
       >
+        {!isZoomed && (
+          <button
+            onClick={handleFavoriteClick}
+            style={{
+              position: "absolute",
+              top: "12px",
+              right: "12px",
+              background: "transparent",
+              border: "none",
+              cursor: "pointer",
+              color: isFavorite ? "#FFD700" : "#666",
+              fontSize: "16px",
+              padding: "4px",
+              borderRadius: "4px",
+              transition: "all 0.2s",
+            }}
+            onMouseEnter={(e) => {
+              e.target.style.color = isFavorite ? "#FFA500" : "#999";
+            }}
+            onMouseLeave={(e) => {
+              e.target.style.color = isFavorite ? "#FFD700" : "#666";
+            }}
+          >
+            ★
+          </button>
+        )}
+
         <div style={{ fontSize: "1rem", fontWeight: "bold" }}>
           {serverName || "Unknown Server"}
         </div>
@@ -301,7 +366,7 @@ export const ServerCard = ({
       ref={containerRef}
       style={{
         background: "#1a1a1a",
-        border: `2px solid ${isZoomed ? "#7D56F4" : isSelected ? "#7D56F4" : "#333"}`,
+        border: `2px solid ${getBorderColor(server, isSelected)}`,
         borderRadius: isZoomed ? "12px" : "8px",
         padding: isZoomed ? "24px" : dimensions.width < 350 ? "12px" : "16px",
         minHeight: isZoomed ? "auto" : "380px",
@@ -332,6 +397,36 @@ export const ServerCard = ({
         `}</style>
       )}
 
+      {!isZoomed && (
+        <button
+          onClick={handleFavoriteClick}
+          style={{
+            position: "absolute",
+            top: dimensions.width < 350 ? "8px" : "12px",
+            right: dimensions.width < 350 ? "8px" : "12px",
+            background: "transparent",
+            border: "none",
+            cursor: "pointer",
+            color: isFavorite ? "#FFD700" : "#666",
+            fontSize: dimensions.width < 350 ? "14px" : "16px",
+            padding: "4px",
+            borderRadius: "4px",
+            transition: "all 0.2s",
+            zIndex: 10,
+          }}
+          onMouseEnter={(e) => {
+            e.target.style.color = isFavorite ? "#FFA500" : "#999";
+            e.target.style.transform = "scale(1.1)";
+          }}
+          onMouseLeave={(e) => {
+            e.target.style.color = isFavorite ? "#FFD700" : "#666";
+            e.target.style.transform = "scale(1)";
+          }}
+        >
+          ★
+        </button>
+      )}
+
       {/* Header */}
       <div
         style={{
@@ -347,6 +442,11 @@ export const ServerCard = ({
           borderBottom: isZoomed ? "1px solid #333" : "none",
           flexWrap: isZoomed && dimensions.width < 600 ? "wrap" : "nowrap",
           gap: isZoomed ? "12px" : "8px",
+          paddingRight: !isZoomed
+            ? dimensions.width < 350
+              ? "24px"
+              : "32px"
+            : "0",
         }}
       >
         <div
