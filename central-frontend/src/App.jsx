@@ -113,7 +113,7 @@ const HelpPopup = ({ onClose }) => {
                 <span className="text-orange-300">Orange</span> - System issues
               </div>
               <div className="ml-5 text-xs text-gray-500">
-                (CPU > 80%, Memory > 60%, or Disk > 95%)
+                (CPU &gt; 80%, Memory &gt; 60%, or Disk &gt; 95%)
               </div>
               <div>
                 <span className="mr-2 inline-block h-3 w-3 rounded bg-gray-600"></span>
