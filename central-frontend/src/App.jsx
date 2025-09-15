@@ -18,7 +18,7 @@ const HelpPopup = ({ onClose }) => {
 
   return (
     <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/95 p-4">
-      <div className="max-h-[90vh] w-full max-w-5xl overflow-y-auto rounded-lg border border-purple-500/30 bg-zinc-900 p-6">
+      <div className="max-h-[90vh] w-full max-w-6xl overflow-y-auto rounded-lg border border-purple-500/30 bg-zinc-900 p-6">
         <div className="mb-6 flex items-center justify-between">
           <h2 className="text-2xl font-bold text-purple-400">
             Keyboard Shortcuts & Search Help
