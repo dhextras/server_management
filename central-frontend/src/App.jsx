@@ -225,6 +225,24 @@ const App = () => {
   const [currentTime, setCurrentTime] = useState(new Date());
   const isFirstTimeRef = useRef(Object.keys(servers).length === 0);
 
+  const [favorites, setFavorites] = useState(() => {
+    try {
+      const saved = localStorage.getItem("server-favorites");
+      return saved ? JSON.parse(saved) : [];
+    } catch (error) {
+      console.error("Error loading favorites:", error);
+      return [];
+    }
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem("server-favorites", JSON.stringify(favorites));
+    } catch (error) {
+      console.error("Error saving favorites:", error);
+    }
+  }, [favorites]);
+
   const [syncState, setSyncState] = useState({
     isRunning: false,
     expectedCount: 0,
@@ -562,7 +580,19 @@ const App = () => {
   const filteredServers = isSearching
     ? filterServers(servers, searchQuery)
     : servers;
-  const serverNames = Object.keys(filteredServers);
+
+  const sortedServerNames = () => {
+    const serverNames = Object.keys(filteredServers);
+    const favoriteServers = serverNames.filter((name) =>
+      favorites.includes(name),
+    );
+    const nonFavoriteServers = serverNames.filter(
+      (name) => !favorites.includes(name),
+    );
+    return [...favoriteServers, ...nonFavoriteServers];
+  };
+
+  const serverNames = sortedServerNames();
 
   const getOptimalGridLayout = () => {
     if (typeof window === "undefined") return { cols: 3, rows: 2 };
@@ -678,14 +708,7 @@ const App = () => {
               : direction.toLowerCase() === "up" && selectedServerIndex - 1;
 
           if (serverNames[tempZoomedIndex]) {
-            const actualServerName =
-              Object.keys(servers).find(
-                (name) =>
-                  Object.keys(filteredServers).includes(name) &&
-                  Object.keys(filteredServers).indexOf(name) ===
-                    tempZoomedIndex,
-              ) || serverNames[tempZoomedIndex];
-            setZoomedServer(actualServerName);
+            setZoomedServer(serverNames[tempZoomedIndex]);
             setSelectedServerIndex(tempZoomedIndex);
           }
         } else if (direction.toLowerCase() === "left") {
@@ -744,14 +767,7 @@ const App = () => {
           if (zoomedServer) {
             setZoomedServer(null);
           } else if (serverNames[selectedServerIndex]) {
-            const actualServerName =
-              Object.keys(servers).find(
-                (name) =>
-                  Object.keys(filteredServers).includes(name) &&
-                  Object.keys(filteredServers).indexOf(name) ===
-                    selectedServerIndex,
-              ) || serverNames[selectedServerIndex];
-            setZoomedServer(actualServerName);
+            setZoomedServer(serverNames[selectedServerIndex]);
           }
           break;
         case "Escape":
@@ -773,6 +789,7 @@ const App = () => {
       totalPages,
       currentPage,
       serversPerPage,
+      favorites,
     ],
   );
 
@@ -805,6 +822,16 @@ const App = () => {
   const openSearch = () => {
     setIsSearching(true);
     setIsSearchHidden(false);
+  };
+
+  const handleToggleFavorite = (serverName) => {
+    setFavorites((prev) => {
+      if (prev.includes(serverName)) {
+        return prev.filter((name) => name !== serverName);
+      } else {
+        return [...prev, serverName];
+      }
+    });
   };
 
   const getSyncStatusText = () => {
@@ -891,6 +918,8 @@ const App = () => {
                 onServerZoom={setZoomedServer}
                 currentPage={currentPage}
                 onPageChange={setCurrentPage}
+                favorites={favorites}
+                onToggleFavorite={handleToggleFavorite}
               />
             </>
           )}

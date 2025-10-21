@@ -8,25 +8,10 @@ export const ServerGrid = ({
   onServerZoom,
   currentPage,
   onPageChange,
+  favorites,
+  onToggleFavorite,
 }) => {
   const gridRef = useRef(null);
-  const [favorites, setFavorites] = useState(() => {
-    try {
-      const saved = localStorage.getItem("server-favorites");
-      return saved ? JSON.parse(saved) : [];
-    } catch (error) {
-      console.error("Error loading favorites:", error);
-      return [];
-    }
-  });
-
-  useEffect(() => {
-    try {
-      localStorage.setItem("server-favorites", JSON.stringify(favorites));
-    } catch (error) {
-      console.error("Error saving favorites:", error);
-    }
-  }, [favorites]);
 
   const getOptimalGridLayout = () => {
     if (typeof window === "undefined") return { cols: 3, rows: 2 };
@@ -102,16 +87,6 @@ export const ServerGrid = ({
 
   const handleCardDoubleClick = (serverName) => {
     onServerZoom(serverName);
-  };
-
-  const handleToggleFavorite = (serverName) => {
-    setFavorites((prev) => {
-      if (prev.includes(serverName)) {
-        return prev.filter((name) => name !== serverName);
-      } else {
-        return [...prev, serverName];
-      }
-    });
   };
 
   const getLocalSelectedIndex = () => {
@@ -209,7 +184,7 @@ export const ServerGrid = ({
             isFavorite={favorites.includes(serverName)}
             onClick={() => handleCardClick(localIndex)}
             onDoubleClick={() => handleCardDoubleClick(serverName)}
-            onToggleFavorite={handleToggleFavorite}
+            onToggleFavorite={onToggleFavorite}
             isZoomed={false}
           />
         ))}
