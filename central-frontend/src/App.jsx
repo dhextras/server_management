@@ -144,11 +144,24 @@ const HelpPopup = ({ onClose }) => {
                   <div>
                     <span className="text-green-400">s:</span>
                     <span className="text-gray-300"> search_term</span> - Search
-                    server status/state only
+                    server status/state
                   </div>
                   <div className="ml-4 text-xs text-gray-500">
-                    Example: <span className="text-green-300">s: active</span>{" "}
-                    finds servers with "active" status
+                    Example: <span className="text-green-300">s: active</span>,{" "}
+                    <span className="text-green-300">s: stale</span>,{" "}
+                    <span className="text-green-300">s: dead</span>
+                  </div>
+                </div>
+                <div className="space-y-1">
+                  <div>
+                    <span className="text-orange-400">s:</span>
+                    <span className="text-gray-300"> usage</span> - Show servers
+                    with high resource usage
+                  </div>
+                  <div className="ml-4 text-xs text-gray-500">
+                    Example: <span className="text-orange-300">s: usage</span>{" "}
+                    or <span className="text-orange-300">s: u</span> finds
+                    servers with CPU &gt; 80%, Memory &gt; 60%, or Disk &gt; 95%
                   </div>
                 </div>
               </div>
@@ -257,12 +270,17 @@ const App = () => {
     const trimmed = query.toLowerCase().trim();
     if (trimmed.startsWith("n:"))
       return { mode: "name", query: trimmed.substring(2).trim() };
-    if (trimmed.startsWith("s:"))
-      return { mode: "status", query: trimmed.substring(2).trim() };
     if (trimmed.startsWith("c:"))
       return { mode: "content", query: trimmed.substring(2).trim() };
     if (trimmed.startsWith("h:"))
       return { mode: "all", query: trimmed.substring(2).trim() };
+    if (trimmed.startsWith("s:")) {
+      const searchTerm = trimmed.substring(2).trim();
+      if (searchTerm.includes("usage") || searchTerm.includes("u")) {
+        return { mode: "warning", query: searchTerm };
+      }
+      return { mode: "status", query: searchTerm };
+    }
     return { mode: "all", query: trimmed };
   };
 
@@ -509,12 +527,27 @@ const App = () => {
     };
   }, []);
 
+  const hasHighStats = (server) => {
+    if (!server || !server.data_history || server.data_history.length === 0) {
+      return false;
+    }
+
+    const latestData = server.data_history[server.data_history.length - 1];
+    const stats = latestData.system_stats;
+
+    return (
+      stats.cpu_percent > 80 ||
+      stats.memory.percent > 60 ||
+      stats.disk.percent > 95
+    );
+  };
+
   const filterServers = (servers, query) => {
     if (!query.trim()) return servers;
 
     const { mode, query: searchTerm } = getSearchMode(query);
 
-    if (!searchTerm) return servers;
+    if (!searchTerm && mode !== "warning") return servers;
 
     const filteredServers = {};
 
@@ -544,6 +577,12 @@ const App = () => {
             if (content.includes(searchTerm)) {
               filteredServers[serverName] = server;
             }
+          }
+          break;
+
+        case "warning":
+          if (hasHighStats(server)) {
+            filteredServers[serverName] = server;
           }
           break;
 

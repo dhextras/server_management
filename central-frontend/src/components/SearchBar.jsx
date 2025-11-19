@@ -43,6 +43,10 @@ export const SearchBar = ({
         color: "text-yellow-400 bg-yellow-500/20 border-yellow-500/40",
         label: "Content",
       },
+      warning: {
+        color: "text-orange-400 bg-orange-500/20 border-orange-500/40",
+        label: "Warning",
+      },
       all: {
         color: "text-purple-400 bg-purple-500/20 border-purple-500/40",
         label: "All",
@@ -62,7 +66,7 @@ export const SearchBar = ({
 
   const getPlaceholder = () => {
     if (searchQuery.length === 0) {
-      return "Search servers... (n: name, s: status, c: content, h: all)";
+      return "Search servers... (n: name, s: status/usage, c: content, h: all)";
     }
     return "";
   };
@@ -77,6 +81,8 @@ export const SearchBar = ({
         return "border-green-500";
       case "content":
         return "border-yellow-500";
+      case "warning":
+        return "border-orange-500";
       case "all":
       default:
         return "border-purple-500";
