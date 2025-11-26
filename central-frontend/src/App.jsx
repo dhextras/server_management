@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useAuth } from '@workos-inc/authkit-react';
 import { SearchBar } from "./components/SearchBar";
 import { ServerCard } from "./components/ServerCard";
 import { ServerGrid } from "./components/ServerGrid";
+import { UserProfile } from "./components/UserProfile";
 
 const HelpPopup = ({ onClose }) => {
   useEffect(() => {
@@ -222,13 +224,14 @@ const HelpPopup = ({ onClose }) => {
 };
 
 const App = () => {
+  const { user, isLoading, signIn } = useAuth();
+  
   const [servers, setServers] = useState({});
   const [connected, setConnected] = useState(false);
   const [selectedServerIndex, setSelectedServerIndex] = useState(0);
   const [zoomedServer, setZoomedServer] = useState(null);
   const [currentKeys, setCurrentKeys] = useState("");
   const [showHelp, setShowHelp] = useState(false);
-
   const [isSearching, setIsSearching] = useState(false);
   const [isSearchHidden, setIsSearchHidden] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -892,6 +895,29 @@ const App = () => {
     return "text-gray-500";
   };
 
+  if (isLoading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-black text-white">
+        <div className="text-lg">Loading...</div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    if (window.location.pathname !== '/callback') {
+      signIn();
+    }
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-black text-white">
+        <div className="text-lg">
+          {window.location.pathname === '/callback' 
+            ? 'Completing sign in...' 
+            : 'Redirecting to login...'}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div
       className="flex min-h-screen flex-col bg-black text-white"
@@ -922,6 +948,8 @@ const App = () => {
           >
             🔍 Search (/)
           </button>
+          
+          <UserProfile />
         </div>
       </div>
 
